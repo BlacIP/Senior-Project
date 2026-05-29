@@ -51,6 +51,7 @@ export function AuthForm({ mode, verified = false, admin = false }: AuthFormProp
 
     const body = (await response.json()) as {
       data?: {
+        email?: string;
         user?: { role: "customer" | "vendor" | "admin"; email?: string };
         verificationRequired?: boolean;
       };
@@ -59,14 +60,15 @@ export function AuthForm({ mode, verified = false, admin = false }: AuthFormProp
 
     setIsPending(false);
 
-    if (!response.ok) {
-      setError(body.error ?? "Something went wrong.");
+    if (body.data?.verificationRequired) {
+      const email =
+        body.data.email ?? body.data.user?.email ?? String(payload.email ?? "");
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       return;
     }
 
-    if (isRegister && body.data?.verificationRequired) {
-      const email = body.data.user?.email ?? String(payload.email ?? "");
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    if (!response.ok) {
+      setError(body.error ?? "Something went wrong.");
       return;
     }
 
@@ -77,7 +79,6 @@ export function AuthForm({ mode, verified = false, admin = false }: AuthFormProp
     } else {
       router.push(body.data?.user?.role === "vendor" ? "/vendor" : "/marketplace");
     }
-    router.refresh();
   }
 
   return (

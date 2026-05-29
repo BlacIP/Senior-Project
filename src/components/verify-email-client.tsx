@@ -52,7 +52,6 @@ export function VerifyEmailClient({ email }: VerifyEmailClientProps) {
     }
 
     router.push("/login?verified=1");
-    router.refresh();
   }
 
   async function resend() {

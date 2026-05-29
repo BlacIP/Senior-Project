@@ -51,7 +51,6 @@ export function ProductFormClient() {
     }
 
     router.push("/vendor");
-    router.refresh();
   }
 
   return (

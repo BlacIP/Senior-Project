@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { userProfiles } from "@/db/schema";
@@ -37,6 +37,22 @@ function getAuthError(response: unknown) {
   return (response as { error?: { message?: string; status?: number } }).error;
 }
 
+function isExistingUserError(message?: string) {
+  return message?.toLowerCase().includes("user already exists") ?? false;
+}
+
+async function getAuthUserByEmail(email: string) {
+  const db = getDb();
+  const result = await db.execute(
+    sql<NeonAuthUser>`select id::text as id, email, name from neon_auth."user" where lower(email) = lower(${email}) limit 1`
+  );
+  const rows = Array.isArray(result)
+    ? result
+    : ((result as { rows?: NeonAuthUser[] }).rows ?? []);
+
+  return rows[0] ?? null;
+}
+
 async function upsertUserProfile(input: {
   authUserId: string;
   name: string;
@@ -69,6 +85,26 @@ export async function registerUser(input: unknown) {
 
   const error = getAuthError(response);
   if (error) {
+    if (isExistingUserError(error.message)) {
+      const authUser = await getAuthUserByEmail(parsed.email);
+
+      if (authUser?.id) {
+        const profile = await upsertUserProfile({
+          authUserId: authUser.id,
+          name: authUser.name ?? parsed.name,
+          email: authUser.email ?? parsed.email.toLowerCase(),
+          role: parsed.role,
+        });
+
+        await auth.emailOtp.sendVerificationOtp({
+          email: parsed.email.toLowerCase(),
+          type: "email-verification",
+        });
+
+        return { user: profile, verificationRequired: true };
+      }
+    }
+
     return { error };
   }
 
