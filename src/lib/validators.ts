@@ -30,12 +30,3 @@ export const productSchema = z.object({
 });
 
 export const adminLoginSchema = loginSchema;
-
-export const verifyEmailOtpSchema = z.object({
-  email: z.string().email(),
-  otp: z.string().min(4),
-});
-
-export const resendEmailVerificationSchema = z.object({
-  email: z.string().email(),
-});

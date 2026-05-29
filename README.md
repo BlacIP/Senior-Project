@@ -9,7 +9,6 @@ products.
 - Next.js App Router project setup with TypeScript, Tailwind CSS, and shadcn/ui.
 - API-based backend foundation using Next.js route handlers.
 - Neon Auth for sign-up, login, logout, and session management.
-- Email verification is required after sign-up before users can log in.
 - Neon PostgreSQL database foundation using Drizzle ORM behind the API layer.
 - User registration and login foundation for customer and vendor roles.
 - Vendor profile onboarding.

@@ -24,15 +24,19 @@ import { Input } from "@/components/ui/input";
 
 type AuthFormProps = {
   mode: "login" | "register";
-  verified?: boolean;
+  registered?: boolean;
   admin?: boolean;
 };
 
-export function AuthForm({ mode, verified = false, admin = false }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  registered = false,
+  admin = false,
+}: AuthFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(
-    verified ? "Email verified. You can now log in." : null
+    registered ? "Account created. You can now log in." : null
   );
   const [isPending, setIsPending] = useState(false);
   const isRegister = mode === "register";
@@ -51,28 +55,21 @@ export function AuthForm({ mode, verified = false, admin = false }: AuthFormProp
 
     const body = (await response.json()) as {
       data?: {
-        email?: string;
         user?: { role: "customer" | "vendor" | "admin"; email?: string };
-        verificationRequired?: boolean;
       };
       error?: string;
     };
 
     setIsPending(false);
 
-    if (body.data?.verificationRequired) {
-      const email =
-        body.data.email ?? body.data.user?.email ?? String(payload.email ?? "");
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-      return;
-    }
-
     if (!response.ok) {
       setError(body.error ?? "Something went wrong.");
       return;
     }
 
-    if (admin) {
+    if (isRegister) {
+      router.push("/login?registered=1");
+    } else if (admin) {
       router.push("/admin");
     } else if (body.data?.user?.role === "admin") {
       router.push("/admin");
@@ -106,7 +103,7 @@ export function AuthForm({ mode, verified = false, admin = false }: AuthFormProp
             ) : null}
             {message ? (
               <Alert>
-                <AlertTitle>{isRegister ? "Verify your email" : "Ready to log in"}</AlertTitle>
+                <AlertTitle>{isRegister ? "Account ready" : "Ready to log in"}</AlertTitle>
                 <AlertDescription>{message}</AlertDescription>
               </Alert>
             ) : null}

@@ -1,16 +1,11 @@
 import "server-only";
 
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { userProfiles } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import {
-  loginSchema,
-  registerSchema,
-  resendEmailVerificationSchema,
-  verifyEmailOtpSchema,
-} from "@/lib/validators";
+import { loginSchema, registerSchema } from "@/lib/validators";
 
 type NeonAuthUser = {
   id?: string;
@@ -35,22 +30,6 @@ function getUserFromAuthResponse(response: unknown): NeonAuthUser | null {
 
 function getAuthError(response: unknown) {
   return (response as { error?: { message?: string; status?: number } }).error;
-}
-
-function isExistingUserError(message?: string) {
-  return message?.toLowerCase().includes("user already exists") ?? false;
-}
-
-async function getAuthUserByEmail(email: string) {
-  const db = getDb();
-  const result = await db.execute(
-    sql<NeonAuthUser>`select id::text as id, email, name from neon_auth."user" where lower(email) = lower(${email}) limit 1`
-  );
-  const rows = Array.isArray(result)
-    ? result
-    : ((result as { rows?: NeonAuthUser[] }).rows ?? []);
-
-  return rows[0] ?? null;
 }
 
 async function upsertUserProfile(input: {
@@ -80,31 +59,10 @@ export async function registerUser(input: unknown) {
     name: parsed.name,
     email: parsed.email.toLowerCase(),
     password: parsed.password,
-    callbackURL: "/login?verified=1",
   });
 
   const error = getAuthError(response);
   if (error) {
-    if (isExistingUserError(error.message)) {
-      const authUser = await getAuthUserByEmail(parsed.email);
-
-      if (authUser?.id) {
-        const profile = await upsertUserProfile({
-          authUserId: authUser.id,
-          name: authUser.name ?? parsed.name,
-          email: authUser.email ?? parsed.email.toLowerCase(),
-          role: parsed.role,
-        });
-
-        await auth.emailOtp.sendVerificationOtp({
-          email: parsed.email.toLowerCase(),
-          type: "email-verification",
-        });
-
-        return { user: profile, verificationRequired: true };
-      }
-    }
-
     return { error };
   }
 
@@ -120,7 +78,7 @@ export async function registerUser(input: unknown) {
     role: parsed.role,
   });
 
-  return { user: profile, verificationRequired: true };
+  return { user: profile };
 }
 
 export async function loginUser(input: unknown) {
@@ -181,36 +139,6 @@ export async function loginAdmin(input: unknown) {
 
 export async function logoutUser() {
   await auth.signOut();
-}
-
-export async function verifyEmailOtp(input: unknown) {
-  const parsed = verifyEmailOtpSchema.parse(input);
-  const response = await auth.emailOtp.verifyEmail({
-    email: parsed.email.toLowerCase(),
-    otp: parsed.otp,
-  });
-
-  const error = getAuthError(response);
-  if (error) {
-    return { error };
-  }
-
-  return { success: true };
-}
-
-export async function resendEmailVerification(input: unknown) {
-  const parsed = resendEmailVerificationSchema.parse(input);
-  const response = await auth.emailOtp.sendVerificationOtp({
-    email: parsed.email.toLowerCase(),
-    type: "email-verification",
-  });
-
-  const error = getAuthError(response);
-  if (error) {
-    return { error };
-  }
-
-  return { success: true };
 }
 
 export async function getCurrentUser() {
