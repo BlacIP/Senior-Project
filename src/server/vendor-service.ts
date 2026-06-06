@@ -1,11 +1,17 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { products, userProfiles, vendorProfiles } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { productSchema, vendorProfileSchema } from "@/lib/validators";
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
 
 export async function requireVendorSession() {
   const { data: session } = await auth.getSession();
@@ -60,6 +66,20 @@ export async function getVendorDashboard() {
   };
 }
 
+export async function getCurrentVendorProfile() {
+  const session = await requireVendorSession();
+  if (!session) return { authRequired: true as const };
+
+  const db = getDb();
+  const [profile] = await db
+    .select()
+    .from(vendorProfiles)
+    .where(eq(vendorProfiles.userProfileId, session.id))
+    .limit(1);
+
+  return profile ?? { missingProfile: true as const };
+}
+
 export async function createVendorProfile(input: unknown) {
   const session = await requireVendorSession();
   if (!session) return null;
@@ -107,10 +127,66 @@ export async function createVendorProduct(input: unknown) {
       city: parsed.city,
       stockQuantity: parsed.stockQuantity,
       imageUrl: parsed.imageUrl || null,
+      imageKey: parsed.imageKey || null,
     })
     .returning();
 
   return product;
+}
+
+export async function getVendorProduct(productId: string) {
+  const profile = await getCurrentVendorProfile();
+  if ("authRequired" in profile || "missingProfile" in profile) return profile;
+  if (!isUuid(productId)) return null;
+
+  const db = getDb();
+  const [product] = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.id, productId), eq(products.vendorId, profile.id)))
+    .limit(1);
+
+  return product ?? null;
+}
+
+export async function updateVendorProduct(productId: string, input: unknown) {
+  const profile = await getCurrentVendorProfile();
+  if ("authRequired" in profile || "missingProfile" in profile) return profile;
+  if (!isUuid(productId)) return null;
+
+  const parsed = productSchema.parse(input);
+  const db = getDb();
+  const [product] = await db
+    .update(products)
+    .set({
+      name: parsed.name,
+      description: parsed.description,
+      price: parsed.price.toFixed(2),
+      category: parsed.category,
+      city: parsed.city,
+      stockQuantity: parsed.stockQuantity,
+      imageUrl: parsed.imageUrl || null,
+      imageKey: parsed.imageKey || null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(products.id, productId), eq(products.vendorId, profile.id)))
+    .returning();
+
+  return product ?? null;
+}
+
+export async function deleteVendorProduct(productId: string) {
+  const profile = await getCurrentVendorProfile();
+  if ("authRequired" in profile || "missingProfile" in profile) return profile;
+  if (!isUuid(productId)) return null;
+
+  const db = getDb();
+  const [product] = await db
+    .delete(products)
+    .where(and(eq(products.id, productId), eq(products.vendorId, profile.id)))
+    .returning();
+
+  return product ?? null;
 }
 
 export async function listProducts() {

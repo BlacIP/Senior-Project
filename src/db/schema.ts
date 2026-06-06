@@ -52,6 +52,7 @@ export const products = pgTable("products", {
   category: text("category").notNull(),
   city: text("city").notNull(),
   imageUrl: text("image_url"),
+  imageKey: text("image_key"),
   stockQuantity: integer("stock_quantity").notNull().default(0),
   isAvailable: boolean("is_available").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),

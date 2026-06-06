@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const requiredText = (min: number, max: number) =>
+  z.string().trim().min(min).max(max);
+
 export const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -13,20 +16,32 @@ export const loginSchema = z.object({
 });
 
 export const vendorProfileSchema = z.object({
-  businessName: z.string().min(2),
-  bio: z.string().optional(),
-  city: z.string().min(2),
-  state: z.string().min(2),
+  businessName: requiredText(2, 120),
+  bio: z.string().trim().max(500).optional(),
+  city: requiredText(2, 80),
+  state: requiredText(2, 80),
 });
 
 export const productSchema = z.object({
-  name: z.string().min(2),
-  description: z.string().min(10),
-  price: z.coerce.number().positive(),
-  category: z.string().min(2),
-  city: z.string().min(2),
-  stockQuantity: z.coerce.number().int().min(0),
+  name: requiredText(2, 120),
+  description: requiredText(10, 1000),
+  price: z.coerce.number().positive().max(999999.99),
+  category: requiredText(2, 80),
+  city: requiredText(2, 80),
+  stockQuantity: z.coerce.number().int().min(0).max(999999),
   imageUrl: z.string().url().optional().or(z.literal("")),
+  imageKey: z.string().trim().max(512).optional().or(z.literal("")),
+});
+
+export const productImageUploadSchema = z.object({
+  fileName: requiredText(1, 180),
+  contentType: z
+    .string()
+    .trim()
+    .refine((value) => ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(value), {
+      message: "Image must be a JPG, PNG, WebP, or GIF file.",
+    }),
+  size: z.number().int().positive().max(5 * 1024 * 1024, "Image must be 5MB or smaller."),
 });
 
 export const adminLoginSchema = loginSchema;

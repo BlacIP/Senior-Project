@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -31,6 +32,7 @@ type VendorProduct = {
   price: string;
   category: string;
   city: string;
+  stockQuantity: number;
 };
 
 type Dashboard = {
@@ -47,6 +49,7 @@ export function VendorDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   async function loadDashboard() {
     const response = await fetch("/api/vendor/profile");
@@ -98,6 +101,40 @@ export function VendorDashboardClient() {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
+  }
+
+  async function deleteProduct(productId: string) {
+    const confirmed = window.confirm("Delete this product listing?");
+    if (!confirmed) return;
+
+    setDeletingProductId(productId);
+    setError(null);
+
+    const response = await fetch(`/api/vendor/products/${productId}`, {
+      method: "DELETE",
+    });
+    const body = (await response.json()) as { error?: string };
+
+    setDeletingProductId(null);
+
+    if (response.status === 401) {
+      router.push("/login");
+      return;
+    }
+
+    if (!response.ok) {
+      setError(body.error ?? "Could not delete product.");
+      return;
+    }
+
+    setDashboard((current) =>
+      current
+        ? {
+            ...current,
+            products: current.products.filter((product) => product.id !== productId),
+          }
+        : current
+    );
   }
 
   if (isLoading) {
@@ -211,15 +248,36 @@ export function VendorDashboardClient() {
                   dashboard.products.map((product) => (
                     <div
                       key={product.id}
-                      className="flex items-center justify-between gap-4 rounded-lg border p-3"
+                      className="flex flex-col justify-between gap-4 rounded-lg border p-3 sm:flex-row sm:items-center"
                     >
                       <div>
                         <p className="font-medium">{product.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {product.category} · {product.city}
+                          {product.category} · {product.city} · {product.stockQuantity} in stock
                         </p>
                       </div>
-                      <p className="font-semibold">${product.price}</p>
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <p className="mr-2 font-semibold">${product.price}</p>
+                        <Link
+                          href={`/vendor/products/${product.id}/edit`}
+                          className={buttonVariants({ variant: "outline", size: "icon" })}
+                          aria-label={`Edit ${product.name}`}
+                          title="Edit product"
+                        >
+                          <Pencil aria-hidden="true" />
+                        </Link>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          aria-label={`Delete ${product.name}`}
+                          title="Delete product"
+                          disabled={deletingProductId === product.id}
+                          onClick={() => deleteProduct(product.id)}
+                        >
+                          <Trash2 aria-hidden="true" />
+                        </Button>
+                      </div>
                     </div>
                   ))
                 ) : (

@@ -1,5 +1,6 @@
 "use client";
 
+import { ImagePlus, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -22,59 +23,168 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-export function ProductFormClient() {
+export type ProductFormValue = {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  category: string;
+  city: string;
+  stockQuantity: number;
+  imageUrl: string | null;
+  imageKey: string | null;
+};
+
+type ProductFormClientProps = {
+  product?: ProductFormValue;
+};
+
+type ImageUploadResponse = {
+  data?: {
+    image?: {
+      url: string;
+      key: string;
+    };
+  };
+  error?: string;
+};
+
+const isEditMode = (product?: ProductFormValue): product is ProductFormValue => Boolean(product);
+
+export function ProductFormClient({ product }: ProductFormClientProps) {
   const router = useRouter();
+  const editing = isEditMode(product);
   const [error, setError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
+  const [imageKey, setImageKey] = useState(product?.imageKey ?? "");
   const [isPending, setIsPending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  async function createProduct(formData: FormData) {
-    setError(null);
-    setIsPending(true);
+  async function uploadImage(file: File) {
+    const imageData = new FormData();
+    imageData.append("image", file);
 
-    const response = await fetch("/api/vendor/products", {
+    setIsUploading(true);
+    const response = await fetch("/api/vendor/products/images", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(formData)),
+      body: imageData,
     });
-    const body = (await response.json()) as { error?: string };
-
-    setIsPending(false);
+    const body = (await response.json()) as ImageUploadResponse;
+    setIsUploading(false);
 
     if (response.status === 401) {
       router.push("/login");
-      return;
+      return null;
     }
 
-    if (!response.ok) {
-      setError(body.error ?? "Could not create product.");
-      return;
+    if (!response.ok || !body.data?.image) {
+      throw new Error(body.error ?? "Could not upload product image.");
     }
 
-    router.push("/vendor");
+    setImageUrl(body.data.image.url);
+    setImageKey(body.data.image.key);
+    return body.data.image;
+  }
+
+  async function saveProduct(formData: FormData) {
+    setError(null);
+    setIsPending(true);
+
+    try {
+      const image = formData.get("image");
+      let nextImageUrl = imageUrl;
+      let nextImageKey = imageKey;
+
+      if (image instanceof File && image.size > 0) {
+        const uploaded = await uploadImage(image);
+        if (!uploaded) return;
+        nextImageUrl = uploaded.url;
+        nextImageKey = uploaded.key;
+      }
+
+      const payload = {
+        name: formData.get("name"),
+        description: formData.get("description"),
+        price: formData.get("price"),
+        category: formData.get("category"),
+        city: formData.get("city"),
+        stockQuantity: formData.get("stockQuantity"),
+        imageUrl: nextImageUrl,
+        imageKey: nextImageKey,
+      };
+
+      const response = await fetch(
+        editing ? `/api/vendor/products/${product.id}` : "/api/vendor/products",
+        {
+          method: editing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      const body = (await response.json()) as { error?: string };
+
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        setError(body.error ?? `Could not ${editing ? "update" : "create"} product.`);
+        return;
+      }
+
+      router.push("/vendor");
+      router.refresh();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not save product.");
+    } finally {
+      setIsPending(false);
+      setIsUploading(false);
+    }
   }
 
   return (
     <Card>
-      <form action={createProduct}>
+      <form action={saveProduct}>
         <CardHeader>
-          <CardTitle>Add product</CardTitle>
-          <CardDescription>Create the first version of a vendor product listing.</CardDescription>
+          <CardTitle>{editing ? "Edit product" : "Add product"}</CardTitle>
+          <CardDescription>
+            {editing
+              ? "Update this listing while keeping it scoped to your vendor account."
+              : "Create a vendor product listing for the marketplace."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <Field>
               <FieldLabel htmlFor="name">Product name</FieldLabel>
-              <Input id="name" name="name" required />
+              <Input id="name" name="name" defaultValue={product?.name} maxLength={120} required />
             </Field>
             <Field>
               <FieldLabel htmlFor="description">Description</FieldLabel>
-              <Textarea id="description" name="description" rows={5} required />
+              <Textarea
+                id="description"
+                name="description"
+                rows={5}
+                defaultValue={product?.description}
+                maxLength={1000}
+                required
+              />
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="price">Price</FieldLabel>
-                <Input id="price" name="price" type="number" min="0" step="0.01" required />
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  min="0.01"
+                  max="999999.99"
+                  step="0.01"
+                  defaultValue={product?.price}
+                  required
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="stockQuantity">Stock</FieldLabel>
@@ -83,7 +193,8 @@ export function ProductFormClient() {
                   name="stockQuantity"
                   type="number"
                   min="0"
-                  defaultValue="1"
+                  max="999999"
+                  defaultValue={product?.stockQuantity ?? 1}
                   required
                 />
               </Field>
@@ -91,19 +202,38 @@ export function ProductFormClient() {
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="category">Category</FieldLabel>
-                <Input id="category" name="category" placeholder="Fresh produce" required />
+                <Input
+                  id="category"
+                  name="category"
+                  placeholder="Fresh produce"
+                  defaultValue={product?.category}
+                  maxLength={80}
+                  required
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="city">City</FieldLabel>
-                <Input id="city" name="city" required />
+                <Input id="city" name="city" defaultValue={product?.city} maxLength={80} required />
               </Field>
             </div>
             <Field>
-              <FieldLabel htmlFor="imageUrl">Image URL</FieldLabel>
-              <Input id="imageUrl" name="imageUrl" type="url" />
-              <FieldDescription>
-                Placeholder support until image uploads are added in a later sprint.
-              </FieldDescription>
+              <FieldLabel htmlFor="image">Product image</FieldLabel>
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed p-4">
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="h-40 w-full rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="flex h-40 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <ImagePlus className="size-8" aria-hidden="true" />
+                  </div>
+                )}
+                <Input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+              </div>
+              <FieldDescription>Upload a JPG, PNG, WebP, or GIF image up to 5MB.</FieldDescription>
             </Field>
           </FieldGroup>
         </CardContent>
@@ -111,8 +241,17 @@ export function ProductFormClient() {
           <Link href="/vendor" className={buttonVariants({ variant: "outline" })}>
             Cancel
           </Link>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Creating..." : "Create product"}
+          <Button type="submit" disabled={isPending || isUploading}>
+            <Save aria-hidden="true" />
+            {isUploading
+              ? "Uploading..."
+              : isPending
+                ? editing
+                  ? "Saving..."
+                  : "Creating..."
+                : editing
+                  ? "Save product"
+                  : "Create product"}
           </Button>
         </CardFooter>
       </form>
