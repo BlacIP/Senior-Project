@@ -221,11 +221,4 @@ for (const user of seedUsers) {
   }
 }
 
-console.log("Seed complete.");
-console.table(
-  seedUsers.map((user) => ({
-    email: user.email,
-    password: seedPassword,
-    role: user.role,
-  }))
-);
+
