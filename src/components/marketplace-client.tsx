@@ -19,6 +19,7 @@ type Product = {
   price: string;
   category: string;
   city: string;
+  imageUrl: string | null;
   stockQuantity: number;
 };
 
@@ -77,7 +78,21 @@ export function MarketplaceClient() {
         ) : products.length ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
-              <Card key={product.id}>
+              <Card key={product.id} className="gap-0 py-0">
+                <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+                  {product.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                      No image added
+                    </div>
+                  )}
+                </div>
                 <CardHeader>
                   <CardTitle>{product.name}</CardTitle>
                   <CardDescription>
