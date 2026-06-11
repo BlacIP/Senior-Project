@@ -16,6 +16,34 @@ if (!authBaseUrl) throw new Error("NEON_AUTH_BASE_URL is required.");
 const sql = neon(databaseUrl);
 const auth = createAuthClient(authBaseUrl);
 
+const seedCategories = [
+  {
+    name: "Fresh produce",
+    slug: "fresh-produce",
+    description: "Vegetables, herbs, and seasonal produce.",
+  },
+  {
+    name: "Fruit",
+    slug: "fruit",
+    description: "Fresh local fruit and orchard products.",
+  },
+  {
+    name: "Dairy and eggs",
+    slug: "dairy-and-eggs",
+    description: "Milk, cheese, eggs, and related staples.",
+  },
+  {
+    name: "Baked goods",
+    slug: "baked-goods",
+    description: "Bread, pastries, and prepared bakery items.",
+  },
+  {
+    name: "Handmade goods",
+    slug: "handmade-goods",
+    description: "Locally made crafts and non-food products.",
+  },
+];
+
 const seedUsers = [
   {
     name: "LocalLink Admin",
@@ -170,7 +198,27 @@ async function ensureVendorProfile(profileId, user) {
   return rows[0];
 }
 
+async function ensureCategory(categoryName) {
+  const seedCategory =
+    seedCategories.find((category) => category.name === categoryName) ??
+    seedCategories[0];
+
+  const rows = await sql`
+    insert into categories (name, slug, description)
+    values (${seedCategory.name}, ${seedCategory.slug}, ${seedCategory.description})
+    on conflict (slug)
+    do update set
+      name = excluded.name,
+      description = excluded.description,
+      updated_at = now()
+    returning id, name
+  `;
+
+  return rows[0];
+}
+
 async function ensureProduct(vendorId, product) {
+  const category = await ensureCategory(product.category);
   const existing = await sql`
     select id
     from products
@@ -178,7 +226,14 @@ async function ensureProduct(vendorId, product) {
     limit 1
   `;
 
-  if (existing[0]) return existing[0];
+  if (existing[0]) {
+    await sql`
+      update products
+      set category_id = ${category.id}, category = ${category.name}, updated_at = now()
+      where id = ${existing[0].id}
+    `;
+    return existing[0];
+  }
 
   const rows = await sql`
     insert into products (
@@ -187,6 +242,7 @@ async function ensureProduct(vendorId, product) {
       description,
       price,
       category,
+      category_id,
       city,
       image_url,
       stock_quantity,
@@ -197,7 +253,8 @@ async function ensureProduct(vendorId, product) {
       ${product.name},
       ${product.description},
       ${product.price},
-      ${product.category},
+      ${category.name},
+      ${category.id},
       ${product.city},
       ${product.imageUrl},
       ${product.stockQuantity},
@@ -207,6 +264,10 @@ async function ensureProduct(vendorId, product) {
   `;
 
   return rows[0];
+}
+
+for (const category of seedCategories) {
+  await ensureCategory(category.name);
 }
 
 for (const user of seedUsers) {
@@ -228,4 +289,3 @@ console.table(
     role: user.role,
   }))
 );
-

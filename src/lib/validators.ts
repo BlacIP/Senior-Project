@@ -27,6 +27,7 @@ export const productSchema = z.object({
   description: requiredText(10, 1000),
   price: z.coerce.number().positive().max(999999.99),
   category: requiredText(2, 80),
+  categoryId: z.string().uuid().optional().or(z.literal("")),
   city: requiredText(2, 80),
   stockQuantity: z.coerce.number().int().min(0).max(999999),
   imageUrl: z.string().url().optional().or(z.literal("")),

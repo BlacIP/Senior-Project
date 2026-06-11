@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -49,6 +49,7 @@ export function VendorDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   async function loadDashboard() {
@@ -77,16 +78,19 @@ export function VendorDashboardClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function createProfile(formData: FormData) {
+  async function saveProfile(formData: FormData, method: "POST" | "PUT") {
     setIsSaving(true);
     setError(null);
 
     const response = await fetch("/api/vendor/profile", {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(Object.fromEntries(formData)),
     });
-    const body = (await response.json()) as { error?: string };
+    const body = (await response.json()) as {
+      data?: { profile?: VendorProfile };
+      error?: string;
+    };
 
     setIsSaving(false);
 
@@ -95,7 +99,22 @@ export function VendorDashboardClient() {
       return;
     }
 
-    router.push("/vendor/products/new");
+    if (method === "POST") {
+      router.push("/vendor/products/new");
+      return;
+    }
+
+    if (body.data?.profile) {
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              profile: body.data?.profile ?? current.profile,
+            }
+          : current
+      );
+      setIsEditingProfile(false);
+    }
   }
 
   async function logout() {
@@ -181,7 +200,7 @@ export function VendorDashboardClient() {
 
         {!dashboard?.profile ? (
           <Card>
-            <form action={createProfile}>
+            <form action={(formData) => saveProfile(formData, "POST")}>
               <CardHeader>
                 <CardTitle>Set up your vendor profile</CardTitle>
                 <CardDescription>
@@ -220,20 +239,95 @@ export function VendorDashboardClient() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
             <Card>
-              <CardHeader>
-                <CardTitle>{dashboard.profile.businessName}</CardTitle>
-                <CardDescription>
-                  {dashboard.profile.city}, {dashboard.profile.state}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {dashboard.profile.bio || "No vendor bio added yet."}
-              </CardContent>
-              <CardFooter>
-                <Link href="/vendor/products/new" className={buttonVariants()}>
-                  Add product
-                </Link>
-              </CardFooter>
+              {isEditingProfile ? (
+                <form action={(formData) => saveProfile(formData, "PUT")}>
+                  <CardHeader>
+                    <CardTitle>Edit vendor profile</CardTitle>
+                    <CardDescription>Update your public business details.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <FieldGroup>
+                      <Field>
+                        <FieldLabel htmlFor="editBusinessName">Business name</FieldLabel>
+                        <Input
+                          id="editBusinessName"
+                          name="businessName"
+                          defaultValue={dashboard.profile.businessName}
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="editBio">Bio</FieldLabel>
+                        <Textarea
+                          id="editBio"
+                          name="bio"
+                          rows={4}
+                          defaultValue={dashboard.profile.bio ?? ""}
+                        />
+                      </Field>
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <Field>
+                          <FieldLabel htmlFor="editCity">City</FieldLabel>
+                          <Input
+                            id="editCity"
+                            name="city"
+                            defaultValue={dashboard.profile.city}
+                            required
+                          />
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="editState">State</FieldLabel>
+                          <Input
+                            id="editState"
+                            name="state"
+                            defaultValue={dashboard.profile.state}
+                            required
+                          />
+                        </Field>
+                      </div>
+                    </FieldGroup>
+                  </CardContent>
+                  <CardFooter className="justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsEditingProfile(false)}
+                    >
+                      <X aria-hidden="true" />
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSaving}>
+                      <Save aria-hidden="true" />
+                      {isSaving ? "Saving..." : "Save profile"}
+                    </Button>
+                  </CardFooter>
+                </form>
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle>{dashboard.profile.businessName}</CardTitle>
+                    <CardDescription>
+                      {dashboard.profile.city}, {dashboard.profile.state}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground">
+                    {dashboard.profile.bio || "No vendor bio added yet."}
+                  </CardContent>
+                  <CardFooter className="justify-between gap-2">
+                    <Link href="/vendor/products/new" className={buttonVariants()}>
+                      Add product
+                    </Link>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsEditingProfile(true)}
+                    >
+                      <Pencil aria-hidden="true" />
+                      Edit profile
+                    </Button>
+                  </CardFooter>
+                </>
+              )}
             </Card>
 
             <Card>

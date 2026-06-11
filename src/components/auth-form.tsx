@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -39,6 +40,7 @@ export function AuthForm({
     registered ? "Account created. You can now log in." : null
   );
   const [isPending, setIsPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const isRegister = mode === "register";
 
   async function onSubmit(formData: FormData) {
@@ -119,14 +121,29 @@ export function AuthForm({
             </Field>
             <Field>
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                minLength={isRegister ? 8 : undefined}
-                autoComplete={isRegister ? "new-password" : "current-password"}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  minLength={isRegister ? 8 : undefined}
+                  autoComplete={isRegister ? "new-password" : "current-password"}
+                  className={isRegister ? undefined : "pr-10"}
+                  required
+                />
+                {!isRegister ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-0 right-0"
+                    onClick={() => setShowPassword((current) => !current)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                  </Button>
+                ) : null}
+              </div>
               {isRegister ? (
                 <FieldDescription>Use at least 8 characters.</FieldDescription>
               ) : null}

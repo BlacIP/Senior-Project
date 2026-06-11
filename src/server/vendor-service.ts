@@ -1,10 +1,12 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { products, userProfiles, vendorProfiles } from "@/db/schema";
+import { categories, products, userProfiles, vendorProfiles } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { DEFAULT_CATEGORIES } from "@/lib/categories";
+import { getShortIdFromProductSlug, slugifyProductName } from "@/lib/slug";
 import { productSchema, vendorProfileSchema } from "@/lib/validators";
 
 function isUuid(value: string) {
@@ -100,6 +102,49 @@ export async function createVendorProfile(input: unknown) {
   return profile;
 }
 
+export async function updateVendorProfile(input: unknown) {
+  const session = await requireVendorSession();
+  if (!session) return null;
+
+  const parsed = vendorProfileSchema.parse(input);
+  const db = getDb();
+  const [profile] = await db
+    .update(vendorProfiles)
+    .set({
+      businessName: parsed.businessName,
+      bio: parsed.bio || null,
+      city: parsed.city,
+      state: parsed.state,
+      updatedAt: new Date(),
+    })
+    .where(eq(vendorProfiles.userProfileId, session.id))
+    .returning();
+
+  return profile ?? { missingProfile: true as const };
+}
+
+async function resolveProductCategory(
+  db: ReturnType<typeof getDb>,
+  categoryId: string | undefined,
+  categoryName: string
+) {
+  if (!categoryId) {
+    return { categoryId: null, categoryName };
+  }
+
+  const [category] = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.id, categoryId))
+    .limit(1);
+
+  if (!category) {
+    throw new Error("Selected category does not exist.");
+  }
+
+  return { categoryId: category.id, categoryName: category.name };
+}
+
 export async function createVendorProduct(input: unknown) {
   const session = await requireVendorSession();
   if (!session) return null;
@@ -116,6 +161,12 @@ export async function createVendorProduct(input: unknown) {
     return { missingProfile: true as const };
   }
 
+  const selectedCategory = await resolveProductCategory(
+    db,
+    parsed.categoryId || undefined,
+    parsed.category
+  );
+
   const [product] = await db
     .insert(products)
     .values({
@@ -123,7 +174,8 @@ export async function createVendorProduct(input: unknown) {
       name: parsed.name,
       description: parsed.description,
       price: parsed.price.toFixed(2),
-      category: parsed.category,
+      category: selectedCategory.categoryName,
+      categoryId: selectedCategory.categoryId,
       city: parsed.city,
       stockQuantity: parsed.stockQuantity,
       imageUrl: parsed.imageUrl || null,
@@ -156,13 +208,19 @@ export async function updateVendorProduct(productId: string, input: unknown) {
 
   const parsed = productSchema.parse(input);
   const db = getDb();
+  const selectedCategory = await resolveProductCategory(
+    db,
+    parsed.categoryId || undefined,
+    parsed.category
+  );
   const [product] = await db
     .update(products)
     .set({
       name: parsed.name,
       description: parsed.description,
       price: parsed.price.toFixed(2),
-      category: parsed.category,
+      category: selectedCategory.categoryName,
+      categoryId: selectedCategory.categoryId,
       city: parsed.city,
       stockQuantity: parsed.stockQuantity,
       imageUrl: parsed.imageUrl || null,
@@ -191,5 +249,117 @@ export async function deleteVendorProduct(productId: string) {
 
 export async function listProducts() {
   const db = getDb();
-  return db.select().from(products).orderBy(desc(products.createdAt)).limit(24);
+  const rows = await db
+    .select({
+      product: products,
+      vendor: {
+        id: vendorProfiles.id,
+        businessName: vendorProfiles.businessName,
+        city: vendorProfiles.city,
+        state: vendorProfiles.state,
+      },
+    })
+    .from(products)
+    .leftJoin(vendorProfiles, eq(products.vendorId, vendorProfiles.id))
+    .where(eq(products.isAvailable, true))
+    .orderBy(desc(products.createdAt))
+    .limit(48);
+
+  return rows.map(({ product, vendor }) => ({
+    ...product,
+    vendor,
+  }));
+}
+
+export async function getPublicProduct(productIdentifier: string, vendorIdentifier?: string) {
+  const db = getDb();
+
+  const shortId = getShortIdFromProductSlug(productIdentifier);
+
+  if (isUuid(productIdentifier) || shortId) {
+    const [row] = await db
+      .select({
+        product: products,
+        vendor: {
+          id: vendorProfiles.id,
+          businessName: vendorProfiles.businessName,
+          bio: vendorProfiles.bio,
+          city: vendorProfiles.city,
+          state: vendorProfiles.state,
+        },
+      })
+      .from(products)
+      .leftJoin(vendorProfiles, eq(products.vendorId, vendorProfiles.id))
+      .where(
+        and(
+          isUuid(productIdentifier)
+            ? eq(products.id, productIdentifier)
+            : sql`${products.id}::text like ${`${shortId}%`}`,
+          eq(products.isAvailable, true)
+        )
+      )
+      .limit(1);
+
+    if (!row) return null;
+    if (
+      vendorIdentifier &&
+      slugifyProductName(row.vendor?.businessName ?? "vendor") !== vendorIdentifier
+    ) {
+      return null;
+    }
+
+    return {
+      ...row.product,
+      vendor: row.vendor,
+    };
+  }
+
+  const rows = await db
+    .select({
+      product: products,
+      vendor: {
+        id: vendorProfiles.id,
+        businessName: vendorProfiles.businessName,
+        bio: vendorProfiles.bio,
+        city: vendorProfiles.city,
+        state: vendorProfiles.state,
+      },
+    })
+    .from(products)
+    .leftJoin(vendorProfiles, eq(products.vendorId, vendorProfiles.id))
+    .where(eq(products.isAvailable, true))
+    .orderBy(desc(products.createdAt))
+    .limit(100);
+
+  const row = rows.find(
+    ({ product, vendor }) =>
+      slugifyProductName(product.name) === productIdentifier &&
+      (!vendorIdentifier ||
+        slugifyProductName(vendor?.businessName ?? "vendor") === vendorIdentifier)
+  );
+  if (!row) return null;
+
+  return {
+    ...row.product,
+    vendor: row.vendor,
+  };
+}
+
+export async function listCategories() {
+  const db = getDb();
+
+  await db
+    .insert(categories)
+    .values([...DEFAULT_CATEGORIES])
+    .onConflictDoNothing({ target: categories.slug });
+
+  await db.execute(sql`
+    update products
+    set category_id = categories.id
+    from categories
+    where lower(products.category) = lower(categories.name)
+      and products.category_id is null
+  `);
+
+  return db.select().from(categories).orderBy(asc(categories.name));
 }

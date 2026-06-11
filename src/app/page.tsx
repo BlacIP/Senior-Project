@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRightIcon, LeafIcon, StoreIcon, TruckIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getCurrentUser, logoutUser } from "@/server/auth-service";
 
 const features = [
   {
@@ -29,7 +31,18 @@ const features = [
   },
 ];
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const currentUser = await getCurrentUser();
+
+  async function logout() {
+    "use server";
+
+    await logoutUser();
+    redirect("/");
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-6">
@@ -44,9 +57,17 @@ export default function Home() {
             >
               Browse
             </Link>
-            <Link href="/login" className={buttonVariants({ size: "sm" })}>
-              Login
-            </Link>
+            {currentUser ? (
+              <form action={logout}>
+                <Button type="submit" size="sm">
+                  Logout
+                </Button>
+              </form>
+            ) : (
+              <Link href="/login" className={buttonVariants({ size: "sm" })}>
+                Login
+              </Link>
+            )}
           </nav>
         </header>
 
@@ -64,18 +85,27 @@ export default function Home() {
                 customers who want fresh produce and locally made goods.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/register" className={buttonVariants({ size: "lg" })}>
-                Create account
-                <ArrowRightIcon data-icon="inline-end" />
-              </Link>
-              <Link
-                href="/vendor"
-                className={buttonVariants({ size: "lg", variant: "outline" })}
-              >
-                Vendor dashboard
-              </Link>
-            </div>
+            {!currentUser ? (
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href="/register" className={buttonVariants({ size: "lg" })}>
+                  Create account
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+                <Link
+                  href="/vendor"
+                  className={buttonVariants({ size: "lg", variant: "outline" })}
+                >
+                  Vendor dashboard
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href="/marketplace" className={buttonVariants({ size: "lg" })}>
+                  Browse marketplace
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4">

@@ -41,6 +41,15 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const categories = pgTable("categories", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull().unique(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const products = pgTable("products", {
   id: uuid("id").defaultRandom().primaryKey(),
   vendorId: uuid("vendor_id")
@@ -50,6 +59,7 @@ export const products = pgTable("products", {
   description: text("description").notNull(),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   category: text("category").notNull(),
+  categoryId: uuid("category_id").references(() => categories.id),
   city: text("city").notNull(),
   imageUrl: text("image_url"),
   imageKey: text("image_key"),

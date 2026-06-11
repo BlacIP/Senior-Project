@@ -3,7 +3,7 @@
 import { ImagePlus, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ export type ProductFormValue = {
   description: string;
   price: string;
   category: string;
+  categoryId: string | null;
   city: string;
   stockQuantity: number;
   imageUrl: string | null;
@@ -49,16 +50,55 @@ type ImageUploadResponse = {
   error?: string;
 };
 
+type Category = {
+  id: string;
+  name: string;
+};
+
 const isEditMode = (product?: ProductFormValue): product is ProductFormValue => Boolean(product);
 
 export function ProductFormClient({ product }: ProductFormClientProps) {
   const router = useRouter();
   const editing = isEditMode(product);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(product?.categoryId ?? "");
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
   const [imageKey, setImageKey] = useState(product?.imageKey ?? "");
   const [isPending, setIsPending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    async function loadCategories() {
+      const response = await fetch("/api/categories");
+      const body = (await response.json()) as {
+        data?: { categories?: Category[] };
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setError(body.error ?? "Could not load product categories.");
+        setIsLoadingCategories(false);
+        return;
+      }
+
+      const nextCategories = body.data?.categories ?? [];
+      setCategories(nextCategories);
+
+      if (!selectedCategoryId && product?.category) {
+        const matchingCategory = nextCategories.find(
+          (category) => category.name.toLowerCase() === product.category.toLowerCase()
+        );
+        setSelectedCategoryId(matchingCategory?.id ?? "");
+      }
+
+      setIsLoadingCategories(false);
+    }
+
+    loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function uploadImage(file: File) {
     const imageData = new FormData();
@@ -103,10 +143,14 @@ export function ProductFormClient({ product }: ProductFormClientProps) {
       }
 
       const payload = {
+        categoryId: selectedCategoryId,
         name: formData.get("name"),
         description: formData.get("description"),
         price: formData.get("price"),
-        category: formData.get("category"),
+        category:
+          categories.find((category) => category.id === selectedCategoryId)?.name ??
+          product?.category ??
+          "",
         city: formData.get("city"),
         stockQuantity: formData.get("stockQuantity"),
         imageUrl: nextImageUrl,
@@ -202,14 +246,24 @@ export function ProductFormClient({ product }: ProductFormClientProps) {
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="category">Category</FieldLabel>
-                <Input
+                <select
                   id="category"
-                  name="category"
-                  placeholder="Fresh produce"
-                  defaultValue={product?.category}
-                  maxLength={80}
+                  name="categoryId"
+                  value={selectedCategoryId}
+                  onChange={(event) => setSelectedCategoryId(event.target.value)}
+                  disabled={isLoadingCategories}
                   required
-                />
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 dark:bg-input/30"
+                >
+                  <option value="">
+                    {isLoadingCategories ? "Loading categories..." : "Select a category"}
+                  </option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </Field>
               <Field>
                 <FieldLabel htmlFor="city">City</FieldLabel>
