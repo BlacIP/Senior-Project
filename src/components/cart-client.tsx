@@ -1,5 +1,6 @@
 "use client";
 
+import { createOrder } from "@/server/order-service";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -33,6 +34,34 @@ export function CartClient() {
 
   function refreshItems(ownerKey = cartOwnerKey) {
     setItems(getCartItems(ownerKey));
+  }
+  async function handleCheckout() {
+    try {
+      const response = await fetch("/api/auth/me");
+      if (!response.ok) {
+        alert("Please Login to proceed with checkout.");
+        return;
+      }
+
+      const body = await response.json();
+      const authUserId = body.data.user.id;
+
+      await createOrder(
+        authUserId,
+        items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }))
+      );
+
+      alert("Order placed successfully");
+
+      localStorage.removeItem(`cart:${cartOwnerKey}`);
+      setItems([]);
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred during checkout. Please try again.");
+    }
   }
 
   useEffect(() => {
@@ -163,8 +192,14 @@ export function CartClient() {
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
               </CardContent>
-              <CardFooter>
-                <Link href="/marketplace" className={buttonVariants({ className: "w-full" })}>
+              <CardFooter className="flex flex-col gap-2">
+                <Button
+                  className="w-full"
+                  onClick={handleCheckout}
+                >
+                  Checkout
+                </Button>  
+                <Link href="/marketplace" className={buttonVariants({ variant: "outline", className: "w-full" })}>
                   Continue browsing
                 </Link>
               </CardFooter>

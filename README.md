@@ -84,6 +84,6 @@ After running `npm run db:seed`, these accounts are available:
 The default seed password is `Password123!`. Override it with
 `DEMO_SEED_PASSWORD` in `.env.local` if needed.
 
-Name: Boluwatife Adebiyi Omotoyinbo
+Name: Boluwatife Adebiyi Omotoyinbo| Emmanuel Oluwatosin Ologe
 
 Quote: "Just do it, live it and repeat"
