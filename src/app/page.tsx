@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowRightIcon, LeafIcon, StoreIcon, TruckIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,6 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { LogoutSubmitButton } from "@/components/logout-submit-button";
+import { MarketplaceClient } from "@/components/marketplace-client";
 import { getCurrentUser, logoutUser } from "@/server/auth-service";
 
 const features = [
@@ -52,17 +54,31 @@ export default async function Home() {
           </Link>
           <nav className="flex items-center gap-2">
             <Link
-              href="/marketplace"
+              href="#products"
               className={buttonVariants({ variant: "ghost", size: "sm" })}
             >
-              Browse
+              Products
             </Link>
             {currentUser ? (
-              <form action={logout}>
-                <Button type="submit" size="sm">
-                  Logout
-                </Button>
-              </form>
+              <>
+                <Link
+                  href="/profile"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  Profile
+                </Link>
+                {currentUser.role === "vendor" ? (
+                  <Link
+                    href="/vendor"
+                    className={buttonVariants({ variant: "ghost", size: "sm" })}
+                  >
+                    Vendor dashboard
+                  </Link>
+                ) : null}
+                <form action={logout}>
+                  <LogoutSubmitButton size="sm" />
+                </form>
+              </>
             ) : (
               <Link href="/login" className={buttonVariants({ size: "sm" })}>
                 Login
@@ -100,10 +116,24 @@ export default async function Home() {
               </div>
             ) : (
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="/marketplace" className={buttonVariants({ size: "lg" })}>
-                  Browse marketplace
+                <Link href="#products" className={buttonVariants({ size: "lg" })}>
+                  Shop products
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
+                <Link
+                  href="/profile"
+                  className={buttonVariants({ size: "lg", variant: "outline" })}
+                >
+                  Profile
+                </Link>
+                {currentUser.role === "vendor" ? (
+                  <Link
+                    href="/vendor"
+                    className={buttonVariants({ size: "lg", variant: "outline" })}
+                  >
+                    Vendor dashboard
+                  </Link>
+                ) : null}
               </div>
             )}
           </div>
@@ -130,6 +160,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      <MarketplaceClient embedded />
     </main>
   );
 }

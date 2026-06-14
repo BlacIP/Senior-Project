@@ -1,10 +1,11 @@
 "use client";
 
-import { Pencil, Save, Trash2, X } from "lucide-react";
+import { Loader2, PackageCheck, Pencil, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +18,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { getVendorStorePath } from "@/lib/slug";
 
 type VendorProfile = {
   id: string;
@@ -43,6 +45,28 @@ type Dashboard = {
   products: VendorProduct[];
 };
 
+type VendorOrder = {
+  id: string;
+  status: "pending" | "confirmed" | "shipped" | "delivered" | "completed" | "cancelled";
+  totalAmount: string;
+  deliveryAddress: string | null;
+  paymentStatus: string;
+  paymentReference: string | null;
+  createdAt: string;
+  customer?: {
+    name: string;
+    email: string;
+  } | null;
+  items: Array<{
+    id: string;
+    quantity: number;
+    unitPrice: string;
+    product: {
+      name: string;
+    } | null;
+  }>;
+};
+
 export function VendorDashboardClient() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -51,6 +75,9 @@ export function VendorDashboardClient() {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<VendorOrder[]>([]);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function loadDashboard() {
     const response = await fetch("/api/vendor/profile");
@@ -66,9 +93,22 @@ export function VendorDashboardClient() {
     } else {
       setDashboard(body.data ?? null);
       setError(null);
+      loadOrders();
     }
 
     setIsLoading(false);
+  }
+
+  async function loadOrders() {
+    const response = await fetch("/api/vendor/orders");
+    const body = (await response.json()) as {
+      data?: { orders: VendorOrder[] };
+      error?: string;
+    };
+
+    if (response.ok) {
+      setOrders(body.data?.orders ?? []);
+    }
   }
 
   useEffect(() => {
@@ -118,6 +158,7 @@ export function VendorDashboardClient() {
   }
 
   async function logout() {
+    setIsLoggingOut(true);
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
   }
@@ -156,6 +197,32 @@ export function VendorDashboardClient() {
     );
   }
 
+  async function updateOrderStatus(
+    orderId: string,
+    status: Exclude<VendorOrder["status"], "completed">
+  ) {
+    setUpdatingOrderId(orderId);
+    setError(null);
+
+    const response = await fetch(`/api/vendor/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const body = (await response.json()) as { error?: string };
+
+    setUpdatingOrderId(null);
+
+    if (!response.ok) {
+      setError(body.error ?? "Could not update order status.");
+      return;
+    }
+
+    setOrders((current) =>
+      current.map((order) => (order.id === orderId ? { ...order, status } : order))
+    );
+  }
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-background px-6 py-8">
@@ -180,11 +247,23 @@ export function VendorDashboardClient() {
             <p className="text-muted-foreground">{dashboard?.user.email}</p>
           </div>
           <div className="flex gap-2">
-            <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
-              Marketplace
+            <Link href="/#products" className={buttonVariants({ variant: "outline" })}>
+              Products
             </Link>
-            <Button type="button" variant="ghost" onClick={logout}>
-              Logout
+            {dashboard?.profile ? (
+              <Link
+                href={getVendorStorePath(dashboard.profile.businessName)}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Storefront
+              </Link>
+            ) : null}
+            <Link href="/profile" className={buttonVariants({ variant: "outline" })}>
+              Profile
+            </Link>
+            <Button type="button" variant="ghost" onClick={logout} disabled={isLoggingOut}>
+              {isLoggingOut ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+              {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
           </div>
         </header>
@@ -314,9 +393,17 @@ export function VendorDashboardClient() {
                     {dashboard.profile.bio || "No vendor bio added yet."}
                   </CardContent>
                   <CardFooter className="justify-between gap-2">
-                    <Link href="/vendor/products/new" className={buttonVariants()}>
-                      Add product
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href="/vendor/products/new" className={buttonVariants()}>
+                        Add product
+                      </Link>
+                      <Link
+                        href={getVendorStorePath(dashboard.profile.businessName)}
+                        className={buttonVariants({ variant: "outline" })}
+                      >
+                        View storefront
+                      </Link>
+                    </div>
                     <Button
                       type="button"
                       variant="outline"
@@ -383,6 +470,88 @@ export function VendorDashboardClient() {
             </Card>
           </div>
         )}
+
+        {dashboard?.profile ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PackageCheck aria-hidden="true" />
+                Customer orders
+              </CardTitle>
+              <CardDescription>
+                Orders that include products from {dashboard.profile.businessName}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {orders.length ? (
+                orders.map((order) => (
+                  <div key={order.id} className="rounded-lg border p-3">
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
+                          <Badge
+                            variant={order.status === "cancelled" ? "destructive" : "secondary"}
+                            className="capitalize"
+                          >
+                            {order.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {order.customer?.name ?? "Customer"} ·{" "}
+                          {new Date(order.createdAt).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.deliveryAddress ?? "No delivery address"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Payment {order.paymentStatus} · {order.paymentReference ?? "No reference"}
+                        </p>
+                      </div>
+                      <select
+                        value={order.status}
+                        disabled={updatingOrderId === order.id}
+                        onChange={(event) =>
+                          updateOrderStatus(
+                            order.id,
+                            event.target.value as Exclude<VendorOrder["status"], "completed">
+                          )
+                        }
+                        className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="completed" disabled>
+                          Completed
+                        </option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {order.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex justify-between gap-4 rounded-lg bg-muted/50 px-3 py-2 text-sm"
+                        >
+                          <span>
+                            {item.product?.name ?? "Product"} x {item.quantity}
+                          </span>
+                          <span className="font-medium">${item.unitPrice}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Customer orders will appear here after checkout.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </main>
   );

@@ -18,6 +18,10 @@ export function getProductDetailPath(product: {
   )}-${product.id.slice(0, 8)}`;
 }
 
+export function getVendorStorePath(vendorName: string) {
+  return `/stores/${slugifyProductName(vendorName)}`;
+}
+
 export function getShortIdFromProductSlug(slug: string) {
   const match = slug.match(/-([0-9a-f]{8})$/i);
   return match?.[1] ?? null;

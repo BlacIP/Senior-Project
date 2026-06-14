@@ -3,7 +3,7 @@ import "server-only";
 import { desc, eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { products, userProfiles, vendorProfiles } from "@/db/schema";
+import { orders, products, userProfiles, vendorProfiles } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 export async function requireAdminSession() {
@@ -29,10 +29,11 @@ export async function getAdminDashboard() {
   if (!admin) return null;
 
   const db = getDb();
-  const [users, vendors, listings] = await Promise.all([
+  const [users, vendors, listings, recentOrders] = await Promise.all([
     db.select().from(userProfiles).orderBy(desc(userProfiles.createdAt)).limit(50),
     db.select().from(vendorProfiles).orderBy(desc(vendorProfiles.createdAt)).limit(50),
     db.select().from(products).orderBy(desc(products.createdAt)).limit(50),
+    db.select().from(orders).orderBy(desc(orders.createdAt)).limit(50),
   ]);
 
   return {
@@ -40,5 +41,6 @@ export async function getAdminDashboard() {
     users,
     vendors,
     products: listings,
+    orders: recentOrders,
   };
 }

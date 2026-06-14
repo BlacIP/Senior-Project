@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -62,9 +62,8 @@ export function AuthForm({
       error?: string;
     };
 
-    setIsPending(false);
-
     if (!response.ok) {
+      setIsPending(false);
       setError(body.error ?? "Something went wrong.");
       return;
     }
@@ -76,7 +75,7 @@ export function AuthForm({
     } else if (body.data?.user?.role === "admin") {
       router.push("/admin");
     } else {
-      router.push(body.data?.user?.role === "vendor" ? "/vendor" : "/marketplace");
+      router.push(body.data?.user?.role === "vendor" ? "/vendor" : "/#products");
     }
   }
 
@@ -166,7 +165,16 @@ export function AuthForm({
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button className="w-full" type="submit" disabled={isPending}>
-            {isPending ? "Please wait..." : isRegister ? "Create account" : "Login"}
+            {isPending ? (
+              <>
+                <Loader2 className="animate-spin" aria-hidden="true" />
+                {isRegister ? "Creating account..." : "Logging in..."}
+              </>
+            ) : isRegister ? (
+              "Create account"
+            ) : (
+              "Login"
+            )}
           </Button>
           <p className="text-sm text-muted-foreground">
             {isRegister ? "Already have an account?" : "Need an account?"}{" "}

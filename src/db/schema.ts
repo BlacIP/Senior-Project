@@ -15,6 +15,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "confirmed",
   "shipped",
   "delivered",
+  "completed",
   "cancelled",
 ]);
 
@@ -77,6 +78,11 @@ export const orders = pgTable("orders", {
   status: orderStatusEnum("status").notNull().default("pending"),
   totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
   deliveryAddress: text("delivery_address"),
+  deliveryLatitude: numeric("delivery_latitude", { precision: 10, scale: 6 }),
+  deliveryLongitude: numeric("delivery_longitude", { precision: 10, scale: 6 }),
+  paymentProvider: text("payment_provider"),
+  paymentStatus: text("payment_status").notNull().default("pending"),
+  paymentReference: text("payment_reference"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

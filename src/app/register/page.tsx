@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function RegisterPage() {
   const currentUser = await getCurrentUser();
   if (currentUser) {
-    redirect("/marketplace");
+    redirect("/#products");
   }
 
   return (

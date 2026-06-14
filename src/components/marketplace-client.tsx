@@ -50,9 +50,10 @@ type Category = {
 type CurrentUser = {
   id: string;
   email: string;
+  role: "customer" | "vendor" | "admin";
 };
 
-export function MarketplaceClient() {
+export function MarketplaceClient({ embedded = false }: { embedded?: boolean }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
@@ -61,6 +62,7 @@ export function MarketplaceClient() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [cartOwnerKey, setCartOwnerKey] = useState(GUEST_CART_OWNER);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isResolvingCartOwner, setIsResolvingCartOwner] = useState(true);
   const [cartCount, setCartCount] = useState(0);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
@@ -112,6 +114,7 @@ export function MarketplaceClient() {
       const body = (await response.json()) as {
         data?: { user?: CurrentUser };
       };
+      setCurrentUser(body.data?.user ?? null);
       setCartOwnerKey(getCartOwnerKey(body.data?.user));
       setIsResolvingCartOwner(false);
     }
@@ -170,11 +173,13 @@ export function MarketplaceClient() {
   }
 
   return (
-    <main className="min-h-screen bg-background px-6 py-8">
+    <section id="products" className="min-h-screen bg-background px-6 py-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
         <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-semibold tracking-normal">Marketplace</h1>
+            <h1 className="text-3xl font-semibold tracking-normal">
+              {embedded ? "Local products" : "Marketplace"}
+            </h1>
             <p className="text-muted-foreground">Browse fresh local products and handmade goods.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -183,9 +188,14 @@ export function MarketplaceClient() {
               Cart
               {cartCount ? <Badge variant="secondary">{cartCount}</Badge> : null}
             </Link>
-            <Link href="/" className={buttonVariants({ variant: "outline" })}>
-              Home
+            <Link href="/profile" className={buttonVariants({ variant: "outline" })}>
+              Profile
             </Link>
+            {currentUser?.role === "vendor" ? (
+              <Link href="/vendor" className={buttonVariants({ variant: "outline" })}>
+                Vendor dashboard
+              </Link>
+            ) : null}
           </div>
         </header>
 
@@ -342,7 +352,7 @@ export function MarketplaceClient() {
           </Card>
         )}
       </div>
-    </main>
+    </section>
   );
 }
 

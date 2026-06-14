@@ -345,6 +345,32 @@ export async function getPublicProduct(productIdentifier: string, vendorIdentifi
   };
 }
 
+export async function getPublicVendorStore(vendorIdentifier: string) {
+  const db = getDb();
+
+  const vendors = await db.select().from(vendorProfiles).limit(100);
+  const vendor = vendors.find(
+    (profile) => slugifyProductName(profile.businessName) === vendorIdentifier
+  );
+
+  if (!vendor) return null;
+
+  const storeProducts = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.vendorId, vendor.id), eq(products.isAvailable, true)))
+    .orderBy(desc(products.createdAt))
+    .limit(100);
+
+  return {
+    vendor,
+    products: storeProducts.map((product) => ({
+      ...product,
+      vendor,
+    })),
+  };
+}
+
 export async function listCategories() {
   const db = getDb();
 

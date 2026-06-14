@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { addCartItem, formatCurrency, GUEST_CART_OWNER, getCartOwnerKey } from "@/lib/cart";
+import { getVendorStorePath } from "@/lib/slug";
 
 type ProductDetail = {
   id: string;
@@ -37,6 +38,7 @@ type ProductDetail = {
 type CurrentUser = {
   id: string;
   email: string;
+  role: "customer" | "vendor" | "admin";
 };
 
 export function ProductDetailClient({
@@ -51,6 +53,7 @@ export function ProductDetailClient({
   const [isLoading, setIsLoading] = useState(!initialProduct);
   const [cartOwnerKey, setCartOwnerKey] = useState(GUEST_CART_OWNER);
   const [isResolvingCartOwner, setIsResolvingCartOwner] = useState(true);
+  const [currentUserRole, setCurrentUserRole] = useState<CurrentUser["role"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cartMessage, setCartMessage] = useState<string | null>(null);
 
@@ -88,6 +91,7 @@ export function ProductDetailClient({
       const body = (await response.json()) as {
         data?: { user?: CurrentUser };
       };
+      setCurrentUserRole(body.data?.user?.role ?? null);
       setCartOwnerKey(getCartOwnerKey(body.data?.user));
       setIsResolvingCartOwner(false);
     }
@@ -139,13 +143,21 @@ export function ProductDetailClient({
     <main className="min-h-screen bg-background px-6 py-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <header className="flex items-center justify-between gap-4">
-          <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
-            Marketplace
+          <Link href="/#products" className={buttonVariants({ variant: "outline" })}>
+            Products
           </Link>
           <Link href="/cart" className={buttonVariants({ variant: "outline" })}>
             <ShoppingCart aria-hidden="true" />
             Cart
           </Link>
+          <Link href="/profile" className={buttonVariants({ variant: "outline" })}>
+            Profile
+          </Link>
+          {currentUserRole === "vendor" ? (
+            <Link href="/vendor" className={buttonVariants({ variant: "outline" })}>
+              Vendor dashboard
+            </Link>
+          ) : null}
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -237,7 +249,17 @@ export function ProductDetailClient({
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                {product.vendor?.bio ?? "No vendor bio added yet."}
+                <div className="flex flex-col gap-4">
+                  <p>{product.vendor?.bio ?? "No vendor bio added yet."}</p>
+                  {product.vendor?.businessName ? (
+                    <Link
+                      href={getVendorStorePath(product.vendor.businessName)}
+                      className={buttonVariants({ variant: "outline", className: "w-fit" })}
+                    >
+                      View storefront
+                    </Link>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -1,7 +1,6 @@
 "use client";
 
-import { createOrder } from "@/server/order-service";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { CreditCard, LocateFixed, Minus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -14,9 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   type CartItem,
+  clearCartItems,
   formatCurrency,
   GUEST_CART_OWNER,
   getCartOwnerKey,
@@ -30,38 +32,116 @@ import { getProductDetailPath } from "@/lib/slug";
 export function CartClient() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartOwnerKey, setCartOwnerKey] = useState(GUEST_CART_OWNER);
+  const [currentUserRole, setCurrentUserRole] = useState<"customer" | "vendor" | "admin" | null>(
+    null
+  );
   const [isResolvingCart, setIsResolvingCart] = useState(true);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryLatitude, setDeliveryLatitude] = useState<number | null>(null);
+  const [deliveryLongitude, setDeliveryLongitude] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   function refreshItems(ownerKey = cartOwnerKey) {
     setItems(getCartItems(ownerKey));
   }
+
+  function createDemoPaystackReference(userProfileId: string) {
+    const confirmed = window.confirm(
+      `Paystack test checkout\n\nAmount: ${formatCurrency(total)}\nSuccessful test card: 4084 0840 8408 4081\nExpiry: any future date, for example 06/27\nCVV: 408\n\nSimulate successful payment?`
+    );
+
+    if (!confirmed) return null;
+
+    return `PSK-DEMO-${userProfileId.slice(0, 8).toUpperCase()}-${items.length}-${Math.round(
+      total * 100
+    )}`;
+  }
+
   async function handleCheckout() {
     try {
+      if (!deliveryAddress.trim()) {
+        alert("Add a delivery address before checkout.");
+        return;
+      }
+
+      setIsCheckingOut(true);
       const response = await fetch("/api/auth/me");
       if (!response.ok) {
         alert("Please Login to proceed with checkout.");
+        setIsCheckingOut(false);
         return;
       }
 
       const body = await response.json();
-      const authUserId = body.data.user.id;
+      const userProfileId = body.data.user.id;
+      const paymentReference = createDemoPaystackReference(userProfileId);
+      if (!paymentReference) {
+        setIsCheckingOut(false);
+        return;
+      }
 
-      await createOrder(
-        authUserId,
-        items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        }))
-      );
+      const orderResponse = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userIdentifier: userProfileId,
+          items: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+          deliveryAddress,
+          deliveryLatitude: deliveryLatitude ?? undefined,
+          deliveryLongitude: deliveryLongitude ?? undefined,
+          paymentProvider: "paystack-demo",
+          paymentReference,
+        }),
+      });
+      const orderBody = (await orderResponse.json()) as { error?: string };
+
+      if (!orderResponse.ok) {
+        alert(orderBody.error ?? "Could not create order.");
+        setIsCheckingOut(false);
+        return;
+      }
 
       alert("Order placed successfully");
 
-      localStorage.removeItem(`cart:${cartOwnerKey}`);
+      clearCartItems(cartOwnerKey);
       setItems([]);
+      setIsCheckingOut(false);
     } catch (error) {
       console.error(error);
+      setIsCheckingOut(false);
       alert("An error occurred during checkout. Please try again.");
     }
+  }
+
+  function applyDemoLocation() {
+    setDeliveryAddress("BYU-Pathway demo delivery point, Lagos, Nigeria");
+    setDeliveryLatitude(6.524379);
+    setDeliveryLongitude(3.379206);
+  }
+
+  function detectCurrentLocation() {
+    if (!navigator.geolocation) {
+      applyDemoLocation();
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setDeliveryLatitude(position.coords.latitude);
+        setDeliveryLongitude(position.coords.longitude);
+        setDeliveryAddress((current) => current || "Current browser location");
+        setIsLocating(false);
+      },
+      () => {
+        applyDemoLocation();
+        setIsLocating(false);
+      }
+    );
   }
 
   useEffect(() => {
@@ -71,9 +151,10 @@ export function CartClient() {
 
       if (response.ok) {
         const body = (await response.json()) as {
-          data?: { user?: { id: string; email: string } };
+          data?: { user?: { id: string; email: string; role: "customer" | "vendor" | "admin" } };
         };
         nextOwnerKey = getCartOwnerKey(body.data?.user);
+        setCurrentUserRole(body.data?.user?.role ?? null);
       }
 
       setCartOwnerKey(nextOwnerKey);
@@ -104,9 +185,17 @@ export function CartClient() {
             <h1 className="text-3xl font-semibold tracking-normal">Cart</h1>
             <p className="text-muted-foreground">{items.length} products selected</p>
           </div>
-          <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
-            Marketplace
+          <Link href="/#products" className={buttonVariants({ variant: "outline" })}>
+            Products
           </Link>
+          <Link href="/profile" className={buttonVariants({ variant: "outline" })}>
+            Profile
+          </Link>
+          {currentUserRole === "vendor" ? (
+            <Link href="/vendor" className={buttonVariants({ variant: "outline" })}>
+              Vendor dashboard
+            </Link>
+          ) : null}
         </header>
 
         {isResolvingCart ? (
@@ -186,20 +275,53 @@ export function CartClient() {
             <Card className="h-fit">
               <CardHeader>
                 <CardTitle>Cart total</CardTitle>
-                <CardDescription>Items are saved on this device.</CardDescription>
+                <CardDescription>Paystack demo checkout with delivery tracking.</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-between text-lg font-semibold">
-                <span>Total</span>
-                <span>{formatCurrency(total)}</span>
+              <CardContent className="flex flex-col gap-4">
+                <div className="flex items-center justify-between text-lg font-semibold">
+                  <span>Total</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+                <Field>
+                  <FieldLabel htmlFor="deliveryAddress">Delivery address</FieldLabel>
+                  <Input
+                    id="deliveryAddress"
+                    value={deliveryAddress}
+                    onChange={(event) => setDeliveryAddress(event.target.value)}
+                    placeholder="Street, city, state"
+                  />
+                </Field>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={detectCurrentLocation}
+                    disabled={isLocating}
+                  >
+                    <LocateFixed aria-hidden="true" />
+                    {isLocating ? "Detecting..." : "Use location"}
+                  </Button>
+                  {deliveryLatitude && deliveryLongitude ? (
+                    <p className="text-xs text-muted-foreground">
+                      Location: {deliveryLatitude.toFixed(4)}, {deliveryLongitude.toFixed(4)}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Browser location falls back to a demo Lagos coordinate.
+                    </p>
+                  )}
+                </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-2">
                 <Button
                   className="w-full"
                   onClick={handleCheckout}
+                  disabled={isCheckingOut}
                 >
-                  Checkout
+                  <CreditCard aria-hidden="true" />
+                  {isCheckingOut ? "Processing..." : "Pay with Paystack demo"}
                 </Button>  
-                <Link href="/marketplace" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+                <Link href="/#products" className={buttonVariants({ variant: "outline", className: "w-full" })}>
                   Continue browsing
                 </Link>
               </CardFooter>

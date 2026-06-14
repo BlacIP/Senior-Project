@@ -45,4 +45,25 @@ export const productImageUploadSchema = z.object({
   size: z.number().int().positive().max(5 * 1024 * 1024, "Image must be 5MB or smaller."),
 });
 
+export const checkoutSchema = z.object({
+  userIdentifier: z.string().min(1),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.coerce.number().int().min(1).max(999),
+      })
+    )
+    .min(1),
+  deliveryAddress: requiredText(5, 240),
+  deliveryLatitude: z.coerce.number().min(-90).max(90).optional(),
+  deliveryLongitude: z.coerce.number().min(-180).max(180).optional(),
+  paymentProvider: z.literal("paystack-demo"),
+  paymentReference: requiredText(8, 80),
+});
+
+export const orderStatusSchema = z.object({
+  status: z.enum(["pending", "confirmed", "shipped", "delivered", "cancelled"]),
+});
+
 export const adminLoginSchema = loginSchema;

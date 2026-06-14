@@ -48,6 +48,12 @@ export function saveCartItems(ownerKey: string, items: CartItem[]) {
   writeStorage(ownerKey, items.filter((item) => item.quantity > 0));
 }
 
+export function clearCartItems(ownerKey: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(getCartStorageKey(ownerKey));
+  window.dispatchEvent(new Event(CART_CHANGED_EVENT));
+}
+
 export function addCartItem(ownerKey: string, item: CartItem) {
   const items = getCartItems(ownerKey);
   const existing = items.find((cartItem) => cartItem.productId === item.productId);

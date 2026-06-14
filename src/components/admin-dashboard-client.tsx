@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,12 +38,22 @@ type AdminDashboard = {
     price: string;
     city: string;
   }>;
+  orders: Array<{
+    id: string;
+    status: string;
+    totalAmount: string;
+    paymentStatus: string;
+    paymentReference: string | null;
+    deliveryAddress: string | null;
+    createdAt: string;
+  }>;
 };
 
 export function AdminDashboardClient() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function loadDashboard() {
     const response = await fetch("/api/admin/dashboard");
@@ -72,6 +83,7 @@ export function AdminDashboardClient() {
   }, []);
 
   async function logout() {
+    setIsLoggingOut(true);
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
   }
@@ -87,11 +99,12 @@ export function AdminDashboardClient() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
-              Marketplace
+            <Link href="/#products" className={buttonVariants({ variant: "outline" })}>
+              Products
             </Link>
-            <Button type="button" variant="ghost" onClick={logout}>
-              Logout
+            <Button type="button" variant="ghost" onClick={logout} disabled={isLoggingOut}>
+              {isLoggingOut ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+              {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
           </div>
         </header>
@@ -105,7 +118,7 @@ export function AdminDashboardClient() {
           </Card>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardHeader>
               <CardTitle>{dashboard?.users.length ?? 0}</CardTitle>
@@ -122,6 +135,12 @@ export function AdminDashboardClient() {
             <CardHeader>
               <CardTitle>{dashboard?.products.length ?? 0}</CardTitle>
               <CardDescription>Products</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{dashboard?.orders.length ?? 0}</CardTitle>
+              <CardDescription>Orders</CardDescription>
             </CardHeader>
           </Card>
         </div>
@@ -163,6 +182,32 @@ export function AdminDashboardClient() {
                     </p>
                   </div>
                   <p className="font-semibold">${product.price}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent orders</CardTitle>
+              <CardDescription>Payment and delivery status across the marketplace.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {dashboard?.orders.map((order) => (
+                <div key={order.id} className="rounded-lg border p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.status} · {order.paymentStatus}
+                      </p>
+                    </div>
+                    <p className="font-semibold">${order.totalAmount}</p>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {order.paymentReference ?? "No payment reference"} ·{" "}
+                    {order.deliveryAddress ?? "No delivery address"}
+                  </p>
                 </div>
               ))}
             </CardContent>
