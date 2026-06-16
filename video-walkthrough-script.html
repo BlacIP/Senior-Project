@@ -155,12 +155,43 @@
       vertical-align: middle;
     }
 
+    /* ── Narration / spoken words ── */
+    .narration {
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      padding: 10px 14px;
+      margin: 8px 0 14px;
+      border-radius: 0 6px 6px 0;
+      font-style: italic;
+      color: #14532d;
+      font-size: 10.5pt;
+      line-height: 1.65;
+    }
+    .narration::before {
+      content: "SAY: ";
+      font-style: normal;
+      font-weight: 700;
+      color: #16a34a;
+      font-size: 9pt;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .show-label {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #1a56db;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 14px 0 3px;
+    }
+
     /* ── Print settings ── */
     @media print {
       body { font-size: 10.5pt; }
       .page { padding: 32px 40px; }
       h2 { page-break-before: auto; }
       .step-block { break-inside: avoid; }
+      .narration { break-inside: avoid; }
       table { break-inside: avoid; }
       .tip-box { break-inside: avoid; }
     }
@@ -320,83 +351,181 @@
   <h2>Section 3 &mdash; Code Walkthrough <span class="duration">6–8 min</span></h2>
 
   <p>
-    Walk through the source files in the order below. The goal is to show the <em>architecture</em>
-    and explain <em>how</em> each major feature was implemented — not to read every line.
+    Each sub-section below has a <strong style="color:#1a56db">SHOW</strong> cue (what to put on screen)
+    and a <strong style="color:#16a34a">SAY</strong> cue (the spoken narration). You do not need to read
+    every line of code — scroll slowly and let the narration guide the viewer's eye.
   </p>
 
-  <!-- ARCHITECTURE -->
+  <!-- ── ARCHITECTURE ── -->
   <h3>Architecture Overview</h3>
-  <div class="step-block">
-    <p>Show the folder structure and explain the layers:</p>
-    <ul>
-      <li><code>src/app/</code> — Next.js pages and API routes (client + server entry points)</li>
-      <li><code>src/components/</code> — interactive client-side UI components</li>
-      <li><code>src/server/</code> — pure server-side business logic (services)</li>
-      <li><code>src/db/</code> — Drizzle ORM schema and database client</li>
-      <li><code>src/lib/</code> — shared utilities (auth helpers, cart, validators, R2)</li>
-    </ul>
+
+  <p class="show-label">Show &rarr; project folder structure in the IDE (collapse node_modules)</p>
+  <div class="narration">
+    "Before we dive into individual files, let me quickly walk through how the project is structured.
+    We're using a Next.js monorepo, so the frontend and backend live in the same codebase.
+    Inside <em>src/app</em> you'll find all the pages and the API routes.
+    <em>src/components</em> holds the interactive client-side UI — things like the marketplace grid
+    and the cart page. <em>src/server</em> is where all the pure server-side business logic lives —
+    authentication, orders, vendor operations. <em>src/db</em> has the database schema and client,
+    and <em>src/lib</em> holds shared utilities like cart helpers, validators, and the image upload client.
+    This separation keeps things clean: the UI never directly touches the database —
+    it always goes through the service layer."
   </div>
 
-  <!-- DB SCHEMA -->
-  <h3>1. Database Schema — <code>src/db/schema.ts</code></h3>
-  <div class="step-block">
-    <ul>
-      <li>Show the Drizzle table definitions: <code>userProfiles</code>, <code>vendorProfiles</code>, <code>products</code>, <code>categories</code>, <code>orders</code>, <code>orderItems</code>.</li>
-      <li>Highlight the <code>role</code> enum (<code>customer / vendor / admin</code>) on the <code>userProfiles</code> table — this drives access control throughout the app.</li>
-      <li>Point out the <code>orderStatus</code> enum (<code>pending → confirmed → shipped → delivered → completed</code>) which mirrors the UI status progression.</li>
-      <li>Show the foreign key relationships: <code>orderItems</code> joins to both <code>orders</code> and <code>products</code>; <code>products</code> joins to <code>vendorProfiles</code>.</li>
-    </ul>
+  <!-- ── DB SCHEMA ── -->
+  <h3>1. Database Schema &mdash; <code>src/db/schema.ts</code></h3>
+
+  <p class="show-label">Show &rarr; open schema.ts, scroll slowly from top</p>
+  <div class="narration">
+    "This file defines the entire database using Drizzle ORM. At the very top you can see two enums —
+    <em>userRoleEnum</em> with values customer, vendor, and admin, and <em>orderStatusEnum</em>
+    with the five stages an order moves through: pending, confirmed, shipped, delivered, and completed.
+    These enums are enforced at the database level, so the app can never write an invalid value."
   </div>
 
-  <!-- AUTH -->
-  <h3>2. Authentication — <code>src/server/auth-service.ts</code> &amp; <code>src/lib/auth.ts</code></h3>
-  <div class="step-block">
-    <ul>
-      <li>Open <code>auth-service.ts</code> and show <code>registerUser</code>: it creates a user in Neon Auth, then inserts a matching row in the local <code>userProfiles</code> table with the selected role.</li>
-      <li>Show <code>loginUser</code>: validates credentials against Neon Auth and writes a session cookie.</li>
-      <li>Open <code>auth.ts</code>: show the Neon Auth initialization with a 300-second cookie TTL and the <code>server-only</code> import guard that prevents auth logic from leaking to the client bundle.</li>
-    </ul>
+  <p class="show-label">Show &rarr; scroll to <code>userProfiles</code> table, highlight the <code>role</code> column</p>
+  <div class="narration">
+    "The <em>userProfiles</em> table stores every user. Notice the <em>role</em> column — it defaults
+    to 'customer', but when someone registers as a vendor we set it to 'vendor'. That single column
+    is what controls which dashboard a user sees and which API routes they can call."
   </div>
 
-  <!-- VENDOR SERVICE -->
-  <h3>3. Vendor &amp; Product Service — <code>src/server/vendor-service.ts</code></h3>
-  <div class="step-block">
-    <ul>
-      <li>Show <code>createProduct</code> / <code>updateProduct</code> / <code>deleteProduct</code> — each checks that the requesting user owns the vendor profile before mutating data.</li>
-      <li>Show <code>listProducts</code>: the marketplace query that joins products with vendor info and supports keyword, category, city, and price-range filtering.</li>
-      <li>Show <code>getVendorBySlug</code>: how public vendor store pages at <code>/stores/[vendor]</code> are resolved via a URL-friendly slug generated from the store name.</li>
-    </ul>
+  <p class="show-label">Show &rarr; scroll to <code>products</code> table, then <code>orders</code> and <code>orderItems</code></p>
+  <div class="narration">
+    "The <em>products</em> table has a foreign key pointing back to <em>vendorProfiles</em>, so every
+    product is always owned by a specific vendor. Down here in <em>orders</em>, you can see we also
+    store the delivery address and GPS coordinates alongside the payment reference from Paystack.
+    And <em>orderItems</em> is the join table that links a single order to one or more products,
+    storing the quantity and the unit price at the time of purchase — so even if the vendor later
+    changes the price, the historical order stays accurate."
   </div>
 
-  <!-- CART -->
-  <h3>4. Cart — <code>src/lib/cart.ts</code></h3>
-  <div class="step-block">
-    <ul>
-      <li>Explain that the cart is stored in <code>localStorage</code> (no server round-trip for every update) keyed by user ID, so different users on the same device have separate carts.</li>
-      <li>Show <code>addToCart</code>, <code>updateQuantity</code>, <code>removeFromCart</code>, and <code>getCartTotal</code>.</li>
-      <li>Highlight the <code>window.dispatchEvent(new Event('storage'))</code> call — this lets the navbar cart-count badge update instantly without a page reload.</li>
-    </ul>
+  <!-- ── AUTH ── -->
+  <h3>2. Authentication &mdash; <code>src/lib/auth.ts</code> &amp; <code>src/server/auth-service.ts</code></h3>
+
+  <p class="show-label">Show &rarr; open auth.ts</p>
+  <div class="narration">
+    "Authentication is powered by Neon Auth, which is the auth layer built into the same Neon
+    database we use for our data. This file initializes it. The first line — <em>import 'server-only'</em>
+    — is a Next.js guard that makes the build fail if this module ever gets bundled into the
+    client-side JavaScript. That's important because this file holds our cookie secret,
+    and it should never ship to the browser."
   </div>
 
-  <!-- ORDER FLOW -->
-  <h3>5. Order Flow — <code>src/app/api/orders/route.ts</code> &amp; <code>src/server/order-service.ts</code></h3>
-  <div class="step-block">
-    <ul>
-      <li>Open <code>api/orders/route.ts</code>: the POST handler receives the cart contents, delivery address, and Paystack payment reference. It validates input, then delegates to the service layer.</li>
-      <li>Open <code>order-service.ts</code> and show <code>createOrder</code>: it iterates cart items, writes a single <code>orders</code> row and one <code>orderItems</code> row per product in a database transaction.</li>
-      <li>Show <code>updateOrderStatus</code>: verifies the caller is a vendor who owns at least one item in the order before allowing the status change.</li>
-      <li>Show <code>getCustomerOrders</code>: how order data is grouped by order ID with nested items, products, and vendor info for the customer orders page.</li>
-    </ul>
+  <p class="show-label">Show &rarr; open auth-service.ts, scroll to <code>registerUser</code> (line 56)</p>
+  <div class="narration">
+    "Now let's look at how registration works. <em>registerUser</em> first validates the incoming
+    data against a Zod schema, then calls <em>auth.signUp.email</em> to create the user in Neon Auth.
+    Once that succeeds and we get back an auth user ID, we call <em>upsertUserProfile</em> to insert
+    a matching row in our own <em>userProfiles</em> table — and this is where we attach the role the
+    user selected on the registration form. So we have two records in sync: one in Neon Auth for
+    credential management, and one in our own database that carries the role and any app-specific data."
   </div>
 
-  <!-- IMAGE UPLOADS -->
-  <h3>6. Image Uploads — <code>src/lib/r2.ts</code> &amp; <code>src/app/api/vendor/products/images/route.ts</code></h3>
-  <div class="step-block">
-    <ul>
-      <li>Show <code>r2.ts</code>: initializes an S3-compatible client pointed at Cloudflare R2 for object storage.</li>
-      <li>Open the images API route: when a vendor uploads a product image, the server generates a pre-signed URL and returns it to the client. The browser then uploads the file directly to R2 — the image never passes through the Next.js server, keeping it lightweight.</li>
-      <li>Point out that the resulting public R2 URL is what gets stored in the <code>products.imageUrl</code> column.</li>
-    </ul>
+  <p class="show-label">Show &rarr; scroll to <code>loginUser</code> (line 84)</p>
+  <div class="narration">
+    "Login works similarly. We call <em>auth.signIn.email</em> which validates the password and
+    sets the session cookie automatically. Then we look up the corresponding profile in our own
+    database to confirm the account exists and to return the user's role to the frontend —
+    that's what decides which dashboard the user lands on after login."
+  </div>
+
+  <!-- ── VENDOR SERVICE ── -->
+  <h3>3. Vendor &amp; Product Service &mdash; <code>src/server/vendor-service.ts</code></h3>
+
+  <p class="show-label">Show &rarr; open vendor-service.ts, scroll to <code>requireVendorSession</code> (line 18)</p>
+  <div class="narration">
+    "Every vendor operation starts with this guard function — <em>requireVendorSession</em>. It reads
+    the current session cookie, looks up the user profile, and checks that the role is 'vendor'.
+    If either check fails it returns null, and the calling function immediately exits. This means
+    it is impossible to call any vendor write operation — create, update, or delete — without
+    being authenticated as a vendor. The check happens on the server, so it can't be bypassed
+    from the browser."
+  </div>
+
+  <p class="show-label">Show &rarr; scroll to <code>createVendorProduct</code> (line 148), highlight the <code>vendorId</code> insert</p>
+  <div class="narration">
+    "When a vendor creates a product, we first fetch their vendor profile using the session,
+    then insert the product with <em>vendorId</em> set to that profile's ID. Notice on the update
+    and delete functions — the WHERE clause always includes both the product ID and the vendor ID.
+    That means a vendor can only ever modify their own products, even if they somehow knew
+    another product's ID."
+  </div>
+
+  <p class="show-label">Show &rarr; scroll to <code>listProducts</code> (line 250)</p>
+  <div class="narration">
+    "This is the query that powers the public marketplace. It does a left join between
+    <em>products</em> and <em>vendorProfiles</em> so each product comes back with its vendor's
+    business name and city attached. We filter to only return available products, order by newest
+    first, and cap it at 48 results. The filtering by keyword, category, and city that you saw
+    in the UI happens on the client side against this result set."
+  </div>
+
+  <!-- ── CART ── -->
+  <h3>4. Cart &mdash; <code>src/lib/cart.ts</code></h3>
+
+  <p class="show-label">Show &rarr; open cart.ts, highlight <code>getCartStorageKey</code> and <code>writeStorage</code> (lines 20–33)</p>
+  <div class="narration">
+    "The shopping cart is stored entirely in the browser's localStorage — there's no server
+    round-trip every time you add or remove an item. To support multiple users on the same device,
+    the storage key includes the user's ID. So if you're logged in as one customer and someone else
+    logs in on the same browser, they each get their own separate cart."
+  </div>
+
+  <p class="show-label">Show &rarr; scroll to <code>addCartItem</code> (line 57), highlight the <code>stockQuantity</code> cap</p>
+  <div class="narration">
+    "When you add an item, we check whether it's already in the cart. If it is, we increment the
+    quantity — but we cap it at <em>stockQuantity</em>, so you can never add more than what's
+    actually available. And at the bottom of the <em>writeStorage</em> function you can see we
+    dispatch a custom event called <em>locallink-cart-changed</em>. The navbar listens for this
+    event and immediately updates the cart count badge — no page reload needed."
+  </div>
+
+  <!-- ── ORDER FLOW ── -->
+  <h3>5. Order Flow &mdash; <code>src/server/order-service.ts</code></h3>
+
+  <p class="show-label">Show &rarr; open order-service.ts, scroll to <code>createOrder</code> (line 86)</p>
+  <div class="narration">
+    "When a customer completes checkout, this function runs on the server. It first looks up the
+    customer profile, then iterates over every item in the cart to fetch the current price from
+    the database — we never trust the price sent from the browser, because a malicious user could
+    tamper with it. We recalculate the total on the server from the database price. Then we insert
+    a single <em>orders</em> row and one <em>orderItems</em> row per product. Notice this line —
+    if a payment reference came in from Paystack, the order status starts as 'confirmed' and payment
+    status as 'paid'. Without a payment reference it stays 'pending'."
+  </div>
+
+  <p class="show-label">Show &rarr; scroll to <code>updateVendorOrderStatus</code> (line 223)</p>
+  <div class="narration">
+    "When a vendor changes an order's status, we don't just check that they're a vendor —
+    we also verify that their products are actually in that specific order. We do a join through
+    <em>orderItems</em> to <em>products</em> filtered by the vendor's ID. If they don't own any
+    item in that order, the function returns 'not found' and the status doesn't change.
+    That prevents one vendor from accidentally — or maliciously — updating another vendor's orders."
+  </div>
+
+  <p class="show-label">Show &rarr; scroll to <code>listCustomerOrders</code> (line 155), highlight the <code>groupOrderRows</code> call</p>
+  <div class="narration">
+    "Fetching orders for the customer page involves a multi-table join — orders, order items,
+    products, and vendor profiles all in one query. Because a single order can have multiple items,
+    the raw SQL returns one row per item. The <em>groupOrderRows</em> helper re-groups those flat
+    rows by order ID, building a nested structure where each order has an array of its items.
+    That's what the UI consumes to render the order breakdown you saw in the product walkthrough."
+  </div>
+
+  <!-- ── IMAGE UPLOADS ── -->
+  <h3>6. Image Uploads &mdash; <code>src/lib/r2.ts</code></h3>
+
+  <p class="show-label">Show &rarr; open r2.ts, highlight <code>getR2Client</code> and <code>uploadProductImage</code></p>
+  <div class="narration">
+    "Product images are stored in Cloudflare R2, which is an S3-compatible object storage service.
+    This file sets up the S3 client pointed at Cloudflare's endpoint using our account ID and
+    access keys from environment variables. When a vendor uploads a photo, the <em>uploadProductImage</em>
+    function validates the file — checking type and size — then generates a unique storage key using
+    a UUID under a path like <em>vendor-products / vendorId / filename</em>. It uploads the file
+    directly from the server to R2 using a <em>PutObjectCommand</em>, then returns both the key
+    and the public URL. That URL is what gets saved to the <em>imageUrl</em> column in the database
+    and served to customers browsing the marketplace."
   </div>
 
 
