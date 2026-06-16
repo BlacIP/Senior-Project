@@ -152,9 +152,9 @@ export default async function Home() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  Ready for Neon DB once credentials are added to `.env.local`.
-                </CardContent>
+                {/* <CardContent className="text-sm text-muted-foreground"> */}
+                  {/* Ready for Neon DB once credentials are added to `.env.local`. */}
+                {/* </CardContent> */}
               </Card>
             ))}
           </div>
