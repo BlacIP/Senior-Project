@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalLink Marketplace — Video Walkthrough Script</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 11pt;
+      color: #1a1a1a;
+      line-height: 1.6;
+      background: #fff;
+    }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 56px;
+    }
+
+    /* ── Header ── */
+    .header {
+      border-bottom: 3px solid #1a56db;
+      padding-bottom: 16px;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 22pt;
+      color: #1a56db;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .header .subtitle {
+      font-size: 11pt;
+      color: #555;
+      margin-top: 4px;
+    }
+    .header .meta {
+      font-size: 9.5pt;
+      color: #888;
+      margin-top: 6px;
+    }
+
+    /* ── Section headings ── */
+    h2 {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #1a56db;
+      margin-top: 36px;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 1.5px solid #dbeafe;
+    }
+    h3 {
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #1e3a5f;
+      margin-top: 20px;
+      margin-bottom: 6px;
+    }
+
+    /* ── Body text ── */
+    p { margin-bottom: 10px; }
+
+    /* ── Requirements table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 10.5pt;
+    }
+    thead tr {
+      background: #1a56db;
+      color: #fff;
+    }
+    thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+    tbody tr:nth-child(even) { background: #f0f6ff; }
+    tbody tr:nth-child(odd)  { background: #fff; }
+    tbody td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #dde;
+      vertical-align: top;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 20px;
+      font-size: 8.5pt;
+      font-weight: 700;
+    }
+    .badge-core         { background: #dcfce7; color: #166534; }
+    .badge-enhancement  { background: #fef9c3; color: #713f12; }
+
+    /* ── Ordered / unordered lists ── */
+    ol, ul {
+      margin: 6px 0 12px 22px;
+    }
+    li { margin-bottom: 4px; }
+    li::marker { color: #1a56db; }
+
+    /* ── Step blocks ── */
+    .step-block {
+      background: #f8faff;
+      border-left: 4px solid #1a56db;
+      padding: 10px 14px;
+      margin: 12px 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .step-block p { margin-bottom: 4px; }
+
+    /* ── Code / file references ── */
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 9pt;
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* ── Tip box ── */
+    .tip-box {
+      background: #fffbeb;
+      border: 1.5px solid #fcd34d;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-top: 24px;
+    }
+    .tip-box h3 {
+      color: #92400e;
+      margin-top: 0;
+      margin-bottom: 6px;
+      font-size: 10.5pt;
+    }
+    .tip-box ul { margin-top: 4px; }
+    .tip-box li::marker { color: #d97706; }
+
+    /* ── Duration pills ── */
+    .duration {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 9pt;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ── Print settings ── */
+    @media print {
+      body { font-size: 10.5pt; }
+      .page { padding: 32px 40px; }
+      h2 { page-break-before: auto; }
+      .step-block { break-inside: avoid; }
+      table { break-inside: avoid; }
+      .tip-box { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <h1>LocalLink Marketplace</h1>
+    <div class="subtitle">Video Walkthrough Script — CSE 499 Senior Project</div>
+    <div class="meta">Next.js · Neon DB · Drizzle ORM · Paystack · Cloudflare R2</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SECTION 1 — PROJECT REQUIREMENTS
+  ══════════════════════════════════════════ -->
+  <h2>Section 1 &mdash; Project Requirements <span class="duration">2–3 min</span></h2>
+
+  <p>
+    Begin by briefly introducing the project: LocalLink is a cross-platform web marketplace that
+    connects local vendors with nearby customers. The application was built with Next.js and deployed
+    on Vercel, using Neon DB (serverless PostgreSQL) for persistent storage and Paystack for payment
+    processing.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:5%">#</th>
+        <th style="width:38%">Requirement</th>
+        <th style="width:45%">Description</th>
+        <th style="width:12%">Type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><strong>User Account Management</strong></td>
+        <td>Customers and vendors sign up, log in securely, and access role-specific dashboards.</td>
+        <td><span class="badge badge-core">Core</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>Vendor Product Listings</strong></td>
+        <td>Vendors create, edit, delete, and manage product listings with images, price, stock, and category.</td>
+        <td><span class="badge badge-core">Core</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>Product Search &amp; Filtering</strong></td>
+        <td>Customers browse products and filter by keyword, category, vendor city, and price range.</td>
+        <td><span class="badge badge-core">Core</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>Cart &amp; Checkout</strong></td>
+        <td>Customers add products to a cart, review their order, and complete payment via Paystack.</td>
+        <td><span class="badge badge-core">Core</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>Order Management</strong></td>
+        <td>Customers view order history and track status; vendors update orders from pending to delivered.</td>
+        <td><span class="badge badge-core">Core</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>Location-Based Discovery</strong></td>
+        <td>Geolocation API auto-detects the customer's delivery coordinates at checkout.</td>
+        <td><span class="badge badge-enhancement">Enhancement</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <!-- ══════════════════════════════════════════
+       SECTION 2 — PRODUCT WALKTHROUGH
+  ══════════════════════════════════════════ -->
+  <h2>Section 2 &mdash; Product Walkthrough <span class="duration">8–10 min</span></h2>
+
+  <p>Walk through the live running application in the order below. Each step maps to a numbered requirement.</p>
+
+  <!-- REQ 1 -->
+  <h3>Requirement 1 — User Account Management</h3>
+  <div class="step-block">
+    <ol>
+      <li>Navigate to <code>/register</code>. Fill in name, email, password, and select the <em>Customer</em> role. Submit.</li>
+      <li>After redirect, navigate to <code>/login</code> and sign in with the new account.</li>
+      <li>Point out the customer navigation bar (Marketplace, Cart, Orders, Profile).</li>
+      <li>Log out, then register again — this time select the <em>Vendor</em> role.</li>
+      <li>Log in as the vendor and show the vendor dashboard at <code>/vendor</code> with its different layout (Products, Orders, Store tabs).</li>
+      <li>Explain that role assignment is enforced on both the frontend and backend API routes.</li>
+    </ol>
+  </div>
+
+  <!-- REQ 2 -->
+  <h3>Requirement 2 — Vendor Product Listings</h3>
+  <div class="step-block">
+    <ol>
+      <li>From the vendor dashboard, click <strong>Add New Product</strong> to go to <code>/vendor/products/new</code>.</li>
+      <li>Fill in: product name, description, price, stock quantity, category, and upload a product image.</li>
+      <li>Submit and confirm the product appears in the vendor's product list.</li>
+      <li>Click <strong>Edit</strong> on the product — change the price and save.</li>
+      <li>Demonstrate the <em>Available / Out of Stock</em> toggle.</li>
+      <li>Click <strong>Delete</strong> on the product and confirm it is removed from the list.</li>
+    </ol>
+  </div>
+
+  <!-- REQ 3 -->
+  <h3>Requirement 3 — Product Search &amp; Filtering</h3>
+  <div class="step-block">
+    <ol>
+      <li>Log in as the customer and navigate to <code>/marketplace</code>.</li>
+      <li>Type a keyword in the search bar — point out the product list updating in real time.</li>
+      <li>Open the <strong>Category</strong> dropdown and select a category to narrow results.</li>
+      <li>Use the <strong>City</strong> filter to show vendor-location-based filtering.</li>
+      <li>Adjust the <strong>Price Range</strong> slider and show results narrowing.</li>
+      <li>Click on any product card to open the product detail page at <code>/marketplace/products/[slug]</code>.</li>
+      <li>Show the vendor name, description, price, stock level, and Add to Cart button on the detail page.</li>
+    </ol>
+  </div>
+
+  <!-- REQ 4 -->
+  <h3>Requirement 4 — Cart &amp; Checkout</h3>
+  <div class="step-block">
+    <ol>
+      <li>On the product detail page, click <strong>Add to Cart</strong>. Show the cart icon counter update in the navbar.</li>
+      <li>Add one or two more products from different vendors.</li>
+      <li>Navigate to <code>/cart</code>.</li>
+      <li>Increase the quantity of one item and remove another item to demonstrate cart management.</li>
+      <li>Fill in a delivery address manually in the text field.</li>
+      <li>Alternatively, click <strong>Detect My Location</strong> — show the coordinates auto-filling the field (Requirement 6).</li>
+      <li>Click <strong>Checkout</strong> — a Paystack payment dialog appears. Complete the demo payment.</li>
+      <li>Confirm the success message and redirect to the orders page.</li>
+    </ol>
+  </div>
+
+  <!-- REQ 5 -->
+  <h3>Requirement 5 — Order Management</h3>
+  <div class="step-block">
+    <ol>
+      <li>On <code>/orders</code> as the customer, show the newly created order with its <em>Pending</em> status and the delivery progress bar.</li>
+      <li>Show order items broken down by vendor, with price totals.</li>
+      <li>Switch to the vendor account and go to the <strong>Orders</strong> tab on the vendor dashboard.</li>
+      <li>Find the incoming order. Use the status dropdown to change it to <em>Confirmed</em>, then <em>Shipped</em>, then <em>Delivered</em>.</li>
+      <li>Switch back to the customer account and refresh <code>/orders</code> — show the status has updated and the progress bar has advanced.</li>
+      <li>Click <strong>Confirm Delivery</strong> to mark the order as complete from the customer side.</li>
+    </ol>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       SECTION 3 — CODE WALKTHROUGH
+  ══════════════════════════════════════════ -->
+  <h2>Section 3 &mdash; Code Walkthrough <span class="duration">6–8 min</span></h2>
+
+  <p>
+    Walk through the source files in the order below. The goal is to show the <em>architecture</em>
+    and explain <em>how</em> each major feature was implemented — not to read every line.
+  </p>
+
+  <!-- ARCHITECTURE -->
+  <h3>Architecture Overview</h3>
+  <div class="step-block">
+    <p>Show the folder structure and explain the layers:</p>
+    <ul>
+      <li><code>src/app/</code> — Next.js pages and API routes (client + server entry points)</li>
+      <li><code>src/components/</code> — interactive client-side UI components</li>
+      <li><code>src/server/</code> — pure server-side business logic (services)</li>
+      <li><code>src/db/</code> — Drizzle ORM schema and database client</li>
+      <li><code>src/lib/</code> — shared utilities (auth helpers, cart, validators, R2)</li>
+    </ul>
+  </div>
+
+  <!-- DB SCHEMA -->
+  <h3>1. Database Schema — <code>src/db/schema.ts</code></h3>
+  <div class="step-block">
+    <ul>
+      <li>Show the Drizzle table definitions: <code>userProfiles</code>, <code>vendorProfiles</code>, <code>products</code>, <code>categories</code>, <code>orders</code>, <code>orderItems</code>.</li>
+      <li>Highlight the <code>role</code> enum (<code>customer / vendor / admin</code>) on the <code>userProfiles</code> table — this drives access control throughout the app.</li>
+      <li>Point out the <code>orderStatus</code> enum (<code>pending → confirmed → shipped → delivered → completed</code>) which mirrors the UI status progression.</li>
+      <li>Show the foreign key relationships: <code>orderItems</code> joins to both <code>orders</code> and <code>products</code>; <code>products</code> joins to <code>vendorProfiles</code>.</li>
+    </ul>
+  </div>
+
+  <!-- AUTH -->
+  <h3>2. Authentication — <code>src/server/auth-service.ts</code> &amp; <code>src/lib/auth.ts</code></h3>
+  <div class="step-block">
+    <ul>
+      <li>Open <code>auth-service.ts</code> and show <code>registerUser</code>: it creates a user in Neon Auth, then inserts a matching row in the local <code>userProfiles</code> table with the selected role.</li>
+      <li>Show <code>loginUser</code>: validates credentials against Neon Auth and writes a session cookie.</li>
+      <li>Open <code>auth.ts</code>: show the Neon Auth initialization with a 300-second cookie TTL and the <code>server-only</code> import guard that prevents auth logic from leaking to the client bundle.</li>
+    </ul>
+  </div>
+
+  <!-- VENDOR SERVICE -->
+  <h3>3. Vendor &amp; Product Service — <code>src/server/vendor-service.ts</code></h3>
+  <div class="step-block">
+    <ul>
+      <li>Show <code>createProduct</code> / <code>updateProduct</code> / <code>deleteProduct</code> — each checks that the requesting user owns the vendor profile before mutating data.</li>
+      <li>Show <code>listProducts</code>: the marketplace query that joins products with vendor info and supports keyword, category, city, and price-range filtering.</li>
+      <li>Show <code>getVendorBySlug</code>: how public vendor store pages at <code>/stores/[vendor]</code> are resolved via a URL-friendly slug generated from the store name.</li>
+    </ul>
+  </div>
+
+  <!-- CART -->
+  <h3>4. Cart — <code>src/lib/cart.ts</code></h3>
+  <div class="step-block">
+    <ul>
+      <li>Explain that the cart is stored in <code>localStorage</code> (no server round-trip for every update) keyed by user ID, so different users on the same device have separate carts.</li>
+      <li>Show <code>addToCart</code>, <code>updateQuantity</code>, <code>removeFromCart</code>, and <code>getCartTotal</code>.</li>
+      <li>Highlight the <code>window.dispatchEvent(new Event('storage'))</code> call — this lets the navbar cart-count badge update instantly without a page reload.</li>
+    </ul>
+  </div>
+
+  <!-- ORDER FLOW -->
+  <h3>5. Order Flow — <code>src/app/api/orders/route.ts</code> &amp; <code>src/server/order-service.ts</code></h3>
+  <div class="step-block">
+    <ul>
+      <li>Open <code>api/orders/route.ts</code>: the POST handler receives the cart contents, delivery address, and Paystack payment reference. It validates input, then delegates to the service layer.</li>
+      <li>Open <code>order-service.ts</code> and show <code>createOrder</code>: it iterates cart items, writes a single <code>orders</code> row and one <code>orderItems</code> row per product in a database transaction.</li>
+      <li>Show <code>updateOrderStatus</code>: verifies the caller is a vendor who owns at least one item in the order before allowing the status change.</li>
+      <li>Show <code>getCustomerOrders</code>: how order data is grouped by order ID with nested items, products, and vendor info for the customer orders page.</li>
+    </ul>
+  </div>
+
+  <!-- IMAGE UPLOADS -->
+  <h3>6. Image Uploads — <code>src/lib/r2.ts</code> &amp; <code>src/app/api/vendor/products/images/route.ts</code></h3>
+  <div class="step-block">
+    <ul>
+      <li>Show <code>r2.ts</code>: initializes an S3-compatible client pointed at Cloudflare R2 for object storage.</li>
+      <li>Open the images API route: when a vendor uploads a product image, the server generates a pre-signed URL and returns it to the client. The browser then uploads the file directly to R2 — the image never passes through the Next.js server, keeping it lightweight.</li>
+      <li>Point out that the resulting public R2 URL is what gets stored in the <code>products.imageUrl</code> column.</li>
+    </ul>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       TIPS
+  ══════════════════════════════════════════ -->
+  <div class="tip-box">
+    <h3>Recording Tips</h3>
+    <ul>
+      <li>Start the dev server before recording: <code>npm run dev</code></li>
+      <li>Seed demo data if needed: <code>node scripts/seed-demo-data.mjs</code></li>
+      <li>Use two browser profiles simultaneously — one logged in as a customer, one as a vendor — so you can switch roles without logging out mid-recording.</li>
+      <li>Record at 1920×1080; set browser zoom to ~110% so text is legible in the video.</li>
+      <li>Mute browser notifications before recording.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
